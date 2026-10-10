@@ -90,9 +90,14 @@ def _add_embed_regular(font_table: str, font_name: str, font_key: str) -> str:
 def _add_odttf_content_type(content_types: str) -> str:
     if "odttf" in content_types:
         return content_types
-    return content_types.replace(
-        "<Types ", "<Types ", 1).replace(
-        ">", f'><Default Extension="odttf" ContentType="{ODTTF_CT}"/>', 1)
+    # 必须插在 <Types …> 开标签**之后**。
+    # 曾经写成 replace(">", …, 1)，结果替换的是 XML 声明末尾那个 ">"，
+    # 把 <Default> 放到根元素前面 —— 包变成无效 XML，WPS 直接打不开。
+    m = re.search(r"<Types\b[^>]*>", content_types)
+    if not m:
+        return content_types
+    decl = f'<Default Extension="odttf" ContentType="{ODTTF_CT}"/>'
+    return content_types[:m.end()] + decl + content_types[m.end():]
 
 
 def _add_embed_flag(settings: str) -> str:
@@ -162,12 +167,34 @@ def embed(docx_in: Path, font_path: Path, font_name: str, out_path: Path) -> dic
 
 
 def verify(out_path: Path) -> list[str]:
-    """复核：odttf 能解回有效字体、各部件与关系齐全。"""
+    """复核：包结构合法、odttf 能解回有效字体、各部件与关系齐全。
+
+    注意这里**必须真解析 XML** —— 早先只查了字符串出现与否，
+    结果 `[Content_Types].xml` 把 <Default> 插到根元素前面（非法 XML）
+    也没被发现，文档在 WPS 里直接打不开。
+    """
+    import xml.etree.ElementTree as ET
+
     from fontTools.ttLib import TTFont
 
     problems: list[str] = []
     with zipfile.ZipFile(out_path) as z:
-        names = set(z.namelist())
+        names = z.namelist()
+
+        # OOXML 要求 [Content_Types].xml 是包里第一个条目
+        if not names or names[0] != "[Content_Types].xml":
+            problems.append(f"第一个条目应是 [Content_Types].xml，实际是 "
+                            f"{names[0] if names else '(空包)'}")
+
+        # 所有 XML / rels 部件都必须是合法 XML
+        for name in names:
+            if name.endswith((".xml", ".rels")):
+                try:
+                    ET.fromstring(z.read(name))
+                except ET.ParseError as exc:
+                    problems.append(f"{name} 不是合法 XML：{exc}")
+
+        names = set(names)
         for need in (ODTTF_PART, "word/fontTable.xml",
                      "word/_rels/fontTable.xml.rels"):
             if need not in names:
