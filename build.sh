@@ -73,6 +73,12 @@ do_package() {
   cp "$ROOT/packaging/install.sh" "$STAGE/"
   cp "$ROOT/packaging/使用说明.md" "$STAGE/使用说明.md"
   cp "$ROOT/tools/enable_inputmethod.py" "$STAGE/"
+  # 授权声明 —— OFL 与 OGDL 都要求随字体署名，必须打进分发包
+  cp "$ROOT/packaging/字形来源与授权.md" "$STAGE/字形来源与授权.md"
+  cp "$ROOT/packaging/KaiyuanSeal-OFL.txt" "$STAGE/KaiyuanSeal-OFL.txt"
+  cp "$ROOT/THIRD_PARTY_NOTICES.md" "$STAGE/第三方来源声明.md"
+  cp "$ROOT/LICENSE" "$STAGE/LICENSE.txt"
+  echo "==> 已附授权声明：MIT（代码）/ OFL（开元小篆）/ OGDL（全字库）"
   chmod +x "$STAGE/install.sh"
   ( cd "$DIST" && zip -qry "小焕的小篆输入法-macOS.zip" "小焕的小篆输入法" )
   echo "==> 分发包：$DIST/小焕的小篆输入法-macOS.zip"
@@ -95,6 +101,34 @@ do_rime() {
   du -sh "$ROOT/dist/小篆-Rime方案.zip"
   echo
   echo "用法见 zip 里的 README.md（两个平台各五步）"
+}
+
+# 发布专用：先重建「不含汉典」的合规字体，再打包两个平台的分发包。
+# 汉典字形授权仅到「个人使用」，对外分发必须排除 —— 详见 packaging/字形来源与授权.md
+do_publish() {
+  # 先把当前（自用，含汉典）字体留一份，方便发布后切回来
+  if [ -f "$ROOT/build/$FONT" ] && [ ! -f "$ROOT/build/ShuowenSeal-full.ttf" ]; then
+    cp "$ROOT/build/$FONT" "$ROOT/build/ShuowenSeal-full.ttf"
+    echo "==> 当前字体已另存为 build/ShuowenSeal-full.ttf（自用版，含汉典）"
+  fi
+  echo "==> 重建合规字体（--no-zdic：不含汉典字形，可自由分发）"
+  # 覆盖表写到 build/ 下另存，免得把仓库里那份（跟自用字体配套）改掉
+  python3 "$ROOT/font/build_font.py" --no-zdic \
+    --coverage "$ROOT/build/glyph_coverage-compliant.json" || return 1
+  do_package
+  do_rime
+  cat <<'TIP'
+
+────────────────────────────────────────────
+发布包已生成（用的是不含汉典的合规字体）：
+  dist/小焕的小篆输入法-macOS.zip
+  dist/小篆-Rime方案.zip
+
+⚠️  build/ShuowenSeal.ttf 现在也是合规版。
+    想换回自用版（含汉典，篆形更全）：
+        cp build/ShuowenSeal-full.ttf build/ShuowenSeal.ttf && ./build.sh font
+────────────────────────────────────────────
+TIP
 }
 
 do_install() {
@@ -144,5 +178,6 @@ case "${1:-build}" in
   font)      do_font ;;
   package)   do_package ;;
   rime)      do_rime ;;
-  *) echo "用法: $0 {build|install|uninstall|font|package|rime}"; exit 1 ;;
+  publish)   do_publish ;;
+  *) echo "用法: $0 {build|install|uninstall|font|package|rime|publish}"; exit 1 ;;
 esac

@@ -98,6 +98,29 @@ unzip 小焕的小篆输入法-macOS.zip && cd 小焕的小篆输入法 && ./ins
 
 ## 发布到 GitHub
 
+**打包用这条** —— 它会自动重建「不含汉典」的合规字体，再打 macOS + Rime 两个包：
+
+```bash
+./build.sh publish
+```
+
+它依次做三件事：
+
+1. 把当前字体另存为 `build/ShuowenSeal-full.ttf`（自用版，含汉典，备着）
+2. 用 `--no-zdic` 重建合规字体 —— **汉典授权仅到「个人使用」，对外分发必须排除**
+3. 打包 `dist/小焕的小篆输入法-macOS.zip` 与 `dist/小篆-Rime方案.zip`
+   （包的体积 ~27 MB / ~14 MB，里面已附 LICENSE 与三份授权声明）
+
+发完想换回自用版（篆形更全，多 114 个常用字）：
+
+```bash
+cp build/ShuowenSeal-full.ttf build/ShuowenSeal.ttf
+python3 font/build_font.py      # 覆盖表要跟着回到自用版
+./build.sh font                 # 重装系统字体
+```
+
+上传 Release：
+
 ```bash
 ./tools/publish_release.sh   # 创建 Release 并上传分发包（需读钥匙串里的 token，会弹窗）
 ```
