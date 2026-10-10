@@ -50,6 +50,15 @@ codesign --force --deep --sign - --identifier com.local.inputmethod.ShuowenSeal 
 killall -HUP TextInputMenuAgent 2>/dev/null || true
 killall -HUP TextInputSwitcher 2>/dev/null || true
 
+# 自动加入输入法启用列表（等同于点 + 添加）
+if [ -f "$ROOT/enable_inputmethod.py" ]; then
+  say "启用输入法"
+  python3 "$ROOT/enable_inputmethod.py" && ok "已加入启用列表" || true
+elif command -v python3 >/dev/null 2>&1 && [ -f "$ROOT/tools/enable_inputmethod.py" ]; then
+  say "启用输入法"
+  python3 "$ROOT/tools/enable_inputmethod.py" && ok "已加入启用列表" || true
+fi
+
 cat <<'TIP'
 
 安装完成！

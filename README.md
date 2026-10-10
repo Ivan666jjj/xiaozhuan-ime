@@ -27,9 +27,13 @@ macOS 上的小篆输入法，走两条路子：
 **下载即用**：[`releases/xiaohuan-xiaozhuan-ime-macOS-v1.0.0.zip`](releases/xiaohuan-xiaozhuan-ime-macOS-v1.0.0.zip)
 解压后运行 `./install.sh`。
 
+`install.sh` 会自动做三件事：装输入法、装字体、**把输入法加进系统启用列表**
+（等同于点 `+` 添加）。最后一步很关键——只把 `.app` 拷进
+`~/Library/Input Methods/` 的话，系统虽认得它，**系统设置里却看不到**。
+
 ```bash
 # 从源码构建（本项目内）
-./build.sh install          # 编译 + 装输入法 + 装字体
+./build.sh install          # 编译 + 装输入法 + 装字体 + 启用
 ./build.sh package          # 生成 dist/小焕的小篆输入法-macOS.zip
 
 # 或直接用分发包
@@ -43,6 +47,14 @@ unzip 小焕的小篆输入法-macOS.zip && cd 小焕的小篆输入法 && ./ins
 ```bash
 ./tools/publish_release.sh   # 创建 Release 并上传分发包（需读钥匙串里的 token，会弹窗）
 ```
+
+### 系统设置里找不到？
+
+```bash
+python3 tools/enable_inputmethod.py    # 补上「启用」这一步
+```
+
+然后**关掉并重开**「系统设置」窗口（那个面板读缓存，装完不重开看不到）。
 
 ## 验收
 

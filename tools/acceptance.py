@@ -74,13 +74,31 @@ def main() -> int:
     check("显示名为「小焕的小篆输入法」", "小焕的小篆输入法" in plist)
 
     print("\n[3] 系统注册（TIS）")
-    tis = Path("/tmp/tis4")
-    if tis.is_file():
-        o = run([str(tis)]).stdout
+    tis_src = ROOT / "tools" / "tis_check.swift"
+    tis_bin = Path("/tmp/tis_check")
+    if not tis_bin.is_file() and tis_src.is_file():
+        r = run(["swiftc", "-O", "-o", str(tis_bin), str(tis_src)])
+        check("TIS 检查工具编译通过", tis_bin.is_file(), r.stderr[:60])
+    if tis_bin.is_file():
+        r = run([str(tis_bin)])
+        o = r.stdout
         check("系统已识别 ShuowenSeal 输入源", "ShuowenSeal" in o)
         check("显示名为「小焕的小篆输入法」", "小焕的小篆输入法" in o)
+        check("属于键盘类输入法（系统设置里会显示）", r.returncode == 0,
+              o.strip().split("\n")[-1][:56])
     else:
-        check("TIS 检查工具可用", False, "缺 /tmp/tis4（可跳过）")
+        check("TIS 检查工具可用", False, "需要 swiftc 编译 tools/tis_check.swift")
+
+    # 关键：TIS 认得 ≠ 用户在系统设置里看得到。
+    # 必须确认它进了「已启用输入源」列表，否则用户会在设置里找不到而以为装失败。
+    imported = run([sys.executable, "tools/enable_inputmethod.py"])
+    check("enable_inputmethod.py 可运行", imported.returncode == 0,
+          imported.stdout.strip()[:40])
+    prefs = run(["defaults", "read", "com.apple.HIToolbox",
+                 "AppleEnabledInputSources"]).stdout
+    check("出现在系统输入法启用列表（系统设置里可见）",
+          "ShuowenSeal" in prefs,
+          "不在列表里 → 用户会在系统设置中找不到")
 
     print("\n[4] 拼音引擎")
     r = run([sys.executable, "zhuan.py", "--limit", "3", "shui", "ren", "shan"])

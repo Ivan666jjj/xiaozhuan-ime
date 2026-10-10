@@ -64,6 +64,7 @@ do_package() {
   cp -R "$BUILD/$BUNDLE" "$STAGE/"
   cp "$ROOT/build/$FONT" "$STAGE/"
   cp "$ROOT/packaging/install.sh" "$STAGE/"
+  cp "$ROOT/tools/enable_inputmethod.py" "$STAGE/"
   cp "$ROOT/README.md" "$STAGE/使用说明.md" 2>/dev/null || true
   chmod +x "$STAGE/install.sh"
   ( cd "$DIST" && zip -qry "小焕的小篆输入法-macOS.zip" "小焕的小篆输入法" )
@@ -86,6 +87,9 @@ do_install() {
   do_font
   # 让系统重新扫描输入法
   killall -HUP "$NAME" 2>/dev/null || true
+  killall -HUP TextInputMenuAgent 2>/dev/null || true
+  # 自动加入启用列表（否则系统设置里看不到，需要手动点 +）
+  python3 "$ROOT/tools/enable_inputmethod.py" 2>/dev/null || true
   echo
   echo "已安装到：$DEST"
   echo "下一步：系统设置 → 键盘 → 文字输入 → 输入法 → 编辑，加上「小篆输入法」"
