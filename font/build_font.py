@@ -751,7 +751,13 @@ def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None,
             "remaining glyphs from zdic.net (personal use only)."
         ),
     })
-    fb.setupOS2(sTypoAscender=880, sTypoDescender=-120, usWinAscent=880, usWinDescent=120)
+    # fsType=0（Installable Embedding）：允许任意嵌入。
+    # ⚠️ 不设的话 fontTools 默认给 4（Preview & Print，只许看、不许编辑嵌入）。
+    # 带 fsType=4 的字体内嵌到 .docx 后，接收方在手机预览 / 网页在线预览等环境
+    # 常常直接不加载，表现为「对方看不到字」。这是我们自己的字体，授权上没理由
+    # 限制嵌入，必须显式设为 0。
+    fb.setupOS2(sTypoAscender=880, sTypoDescender=-120, usWinAscent=880, usWinDescent=120,
+                fsType=0)
     fb.setupPost()
     out.parent.mkdir(parents=True, exist_ok=True)
     fb.save(str(out))
