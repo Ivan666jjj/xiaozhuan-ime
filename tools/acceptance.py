@@ -52,7 +52,7 @@ def main() -> int:
         pua = sum(1 for c in cmap if 0xF0000 <= c <= 0xF0000 + (0x9FFF - 0x3400))
         check("字体含小篆区块字形", seal > 5000, f"主区 {seal} 个")
         check("字体含补区字形", pua > 500, f"补区 {pua} 个")
-        check("字形总数达标", f["maxp"].numGlyphs > 8000, f"{f['maxp'].numGlyphs} 字形")
+        check("字形总数达标（全字库共 6,738 汉字）", f["maxp"].numGlyphs >= 6700, f"{f['maxp'].numGlyphs} 字形")
     except Exception as exc:
         check("字体可解析", False, str(exc))
 

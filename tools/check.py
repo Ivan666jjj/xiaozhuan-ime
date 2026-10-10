@@ -21,9 +21,22 @@ WARN = "\033[33m!\033[0m"
 
 def main() -> int:
     print("== 字库 ==")
-    raw = list((ROOT / "fonts" / "raw").glob("*.svg"))
-    pua = list((ROOT / "fonts" / "pua").glob("*.svg"))
-    print(f"  主区 SVG(U+3Dxxx): {len(raw)}   补区 SVG(PUA): {len(pua)}")
+    eb = ROOT / "font" / "ebas" / "EBAS-Shuowen.ttf"
+    cov_path = ROOT / "data" / "glyph_coverage.json"
+    if eb.is_file():
+        from fontTools.ttLib import TTFont
+        eb_cmap = TTFont(eb, lazy=True).getBestCmap()
+        n_han = sum(1 for c in eb_cmap if 0x4E00 <= c <= 0x9FFF)
+        print(f"  {OK} 字形源 {eb.name}（全字库说文解字）  {n_han} 个汉字")
+    else:
+        print(f"  {NO} 缺少字形源 {eb}")
+        return 1
+    if cov_path.is_file():
+        cov = json.loads(cov_path.read_text(encoding="utf-8"))
+        print(f"  {OK} 覆盖表 {cov_path.name}  主区 {cov['sealCount']} + 补区 {cov['puaCount']}")
+    else:
+        print(f"  {NO} 缺少覆盖表 {cov_path}，先跑 python3 font/build_font.py")
+        return 1
 
     print("== 字体 ==")
     fp = ROOT / "build" / "ShuowenSeal.ttf"
@@ -67,7 +80,7 @@ def main() -> int:
         print(f"     {ch} -> {('U+%04X[%s]' % (ord(s), kind)) if s else '无篆形'}")
 
     print("== 系统安装 ==")
-    app = Path.home() / "Library" / "Input Methods" / "ShuowenIME.app"
+    app = Path.home() / "Library" / "Input Methods" / "小焕的小篆输入法.app"
     font = Path.home() / "Library" / "Fonts" / "ShuowenSeal.ttf"
     print(f"  {OK if app.is_dir() else NO} 输入法 {app}")
     print(f"  {OK if font.is_file() else NO} 字体   {font}")

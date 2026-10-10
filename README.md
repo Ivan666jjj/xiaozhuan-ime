@@ -64,7 +64,7 @@ python3 tools/enable_inputmethod.py    # 补上「启用」这一步
 ```
 skill:xiaozhuan-ime
   SKILL.md   链路图 + 4 个致命坑 + 验收判据 + 超 BMP 陷阱
-  scripts/   fetch_all / build_font / tis_check / enable_inputmethod / acceptance
+  scripts/   build_font / tis_check / enable_inputmethod / acceptance
 ```
 
 ## 验收结果（实机）
@@ -75,6 +75,13 @@ skill:xiaozhuan-ime
 
 输入 15 个篆字（水火山木人日月明天地大小上下中），**全部正常显示为篆形，无一豆腐块**。
 其中「小」来自 PUA 补区（U+F280F），同样正常渲染。
+
+换成全字库字形后，再走一遍系统渲染路径（CoreText）复核：
+
+![CoreText 验收](docs/验收-全字库版.png)
+
+三行分别是**主区字**、**PUA 补区字**、以及原始字型里**曾经错位、现已修复**的那批字
+（巡 咄 甫 角 谷 豕 辰 赤）。
 
 > 注意：WPS 默认字体（Times New Roman / MS 明朝）不含小篆码位，
 > 需要把文本字体设为 **Shuowen Seal** 才显示（Word 之外的多数软件同理）。
@@ -96,12 +103,13 @@ core/                     转换内核（纯 Python，可独立使用）
   freq.py                 字频代理（pypinyin 词组词典统计）
   zhuan.py                统一入口：拼音/汉字 → 小篆
 tools/
-  fetch_all.py            并发抓汉典《说文》小篆 SVG（主区 + 补区）
+  fetch_all.py            （已废弃）当初抓汉典 SVG 用，不再参与构建
   export_dict.py          导出 ime/Resources/seal_dict.json
   check.py                工程自检
   acceptance.py           端到端验收测试
 font/
-  build_font.py           SVG → TrueType（U+3D000 主区 + PUA 补区）
+  ebas/EBAS-Shuowen.ttf   全字库说文解字原始字型（字形源）
+  build_font.py           全字库 TTF → 小篆字体（U+3D000 主区 + PUA 补区）
 ime/
   ShuowenIME/             InputMethodKit 输入法（Swift）
   Resources/              Info.plist、seal_dict.json
@@ -123,9 +131,9 @@ build.sh                  构建 / 安装 / 卸载
 **1. Unicode 小篆区块并不完整。** Unicode 18.0 的 `kSEAL_MCJK` 有约 2,918 条把篆形
 对应成了**扩展区古字**（例如「二」记作「𠄞」、「五」记作「𢀑」），导致「七」「二」
 「五」「小」「之」这类常用字查不到码位。实测 5,195 个常用字里只有 2,211 个有
-Unicode 码位。
+Unicode 码位 —— 加上补区后，最终能打出 3,589 个（69%）。
 
-> 解决：**补区**。这类字从汉典单独抓篆形，用确定性公式编码到 PUA 私有区：
+> 解决：**补区**。这类字改用全字库的篆形，用确定性公式编码到 PUA 私有区：
 > `PUA = 0xF0000 + (汉字码位 - 0x3400)`（可逆，不需要额外映射表）。
 > 代价：**补区字符离开本字体不可移植**——复制到没装该字体的机器会显示成方块。
 
@@ -147,19 +155,16 @@ Unicode 码位。
 ## 用法
 
 ```bash
-# 1. 抓字形（增量可反复跑，约 3-5 分钟）
-python3 tools/fetch_all.py --workers 8
-
-# 2. 合成字体
+# 1. 合成字体（从 font/ebas/EBAS-Shuowen.ttf 重编码，约 10 秒）
 python3 font/build_font.py
 
-# 3. 导出拼音词典
+# 2. 导出拼音词典
 python3 tools/export_dict.py
 
-# 4. 构建 + 安装（同时把字体装到 ~/Library/Fonts/）
+# 3. 构建 + 安装（同时把字体装到 ~/Library/Fonts/）
 ./build.sh install
 
-# 5. 自检（关键指标一目了然）
+# 4. 自检（关键指标一目了然）
 python3 tools/check.py
 ```
 
@@ -196,44 +201,59 @@ print(eng.text_to_seal('流水说小'))         # 整段转小篆
 "
 ```
 
-## 两套篆形字体（重要）
+## 字形来源
 
-项目里并存**两套**篆形字体，各有取舍：
+只认一套字形：**台湾「全字库说文解字」**（CMEX 制作，依《政府资料开放授权条款
+第 1 版》释出，个人与企业均可免费使用）。原始字型在
+`font/ebas/EBAS-Shuowen.ttf`，收 6,738 个汉字，字形编码在 **CJK 基本区**
+（现代汉字码位）。
 
-| | `ShuowenSeal.ttf`（默认） | `EBAS-Shuowen.ttf`（全字库） |
+构建时由 `font/build_font.py` 把它**重编码**成输入法上屏要用的那套码位：
+
+| | 原始 EBAS | 构建产物 `ShuowenSeal.ttf` |
 |---|---|---|
-| 来源 | 汉典 | **全字库说文解字**（CMEX 制作，政府开放授权） |
-| 字形数 | **12,836** | 6,745 |
-| 编码 | **U+3D000 小篆区块 + PUA 补区** | **CJK 基本区（现代汉字码位）** |
-| 授权 | 汉典整理版，**仅限个人使用** | **可商用**（需标注来源） |
-| 兼容性 | 超 BMP，办公软件里要手动设字体 | **现代汉字码位，任何软件直接显示** |
+| 字形数 | 6,738 | 6,738 |
+| 编码 | CJK 基本区（现代汉字码位） | **U+3D000 小篆区块** + **PUA-A 补区** |
+| 用途 | 给人当字体用 | 给输入法上屏用（真小篆字符，可编辑可再排版） |
 
-**怎么选**：
-- **自己用 / 字最全** → `ShuowenSeal.ttf`（输出真正的小篆字符 `U+3Dxxx`，可编辑可再排版）
-- **要分发 / 送人 / 商用** → `EBAS-Shuowen.ttf`（字符是普通汉字，靠字体渲染出篆形）
+- **主区** 5,817 个码位：`U+3D000..U+3FC3F`，来自 Unicode 18.0 的 `kSEAL_MCJK` 对应表
+- **补区** 964 个码位：Unicode 小篆区块漏收的《说文》字（「七」「小」「自」「玉」…），
+  编码到 `U+F0000 + 汉字码位 - 0x3400`
 
-### EBAS 是怎么拿到的（官网连不上时的绕法）
+产物 `data/glyph_coverage.json` 是「哪些字真的打得出来」的唯一权威，
+`core/zhuan.py` 按它过滤 —— Unicode 有码位但全字库没收的字不会进候选，
+不会出现「打了字却是豆腐块」。
+
+### 原始字型是怎么拿到的
 
 官网 `cns11643.gov.tw` 在部分网络下 DNS 解析不了。可行路径是
 **ZeoseVen 字体库的 webfont 端点**——它以 `cn-font-split` 把字体切成 99 个
-woff2 分片公开托管：
+woff2 分片公开托管，全部下载后用 fontTools 合并：
 
 ```bash
 curl -sL "https://fontsapi.zeoseven.com/37/main/result.css"   # 含全部分片 URL
-# 下载 99 个分片后，用 fontTools 合并：
 python3 -c "
 from fontTools.merge import Merger
 Merger().merge(sorted(glob.glob('*.woff2'))).save('EBAS.ttf')"
 ```
 
-**踩坑**：合并 woff2 需要 `brotli`（`python3 -m pip install brotli`）；
-`Merger.merge()` 只接受**文件路径**，不接受 `TTFont` 对象。
+**踩坑**：合并 woff2 需要 `brotli`；`Merger.merge()` 只接受**文件路径**。
 
-## 字形来源与授权
+### 原字型里的一个坑（已在构建时处理）
 
-字形抓自[汉典](https://www.zdic.net/)（`img.zdic.net/swxz/`，即《说文》小篆），
-**仅供个人使用，请勿公开分发**。映射与字形结构参考 Unicode 18.0
+合并出来的 `EBAS-Shuowen.ttf` 里，33 个字的 `hmtx.lsb` 与 `glyf.xMin` 对不上
+（「巡」差 3604、「咄」差 682 …）。`TTFont.getGlyphSet()` 拿到的字形在 `draw()`
+时会把差值当**水平偏移**用，FreeType 也照此渲染 —— 表现为这批字整体右移一格。
+
+`font/build_font.py` 因此一律用 `glyf[gn].draw(pen, glyf)` 取轮廓（offset 默认 0，
+即真实轮廓坐标），重建时再令 `hmtx.lsb == 新字形 xMin`。脚本自带复核：
+产物里 lsb 与 xMin 不一致的字形数为 **0**。
+
+## 授权
+
+字形来自**台湾「全字库说文解字」TrueType 字型**（CMEX 制作），依
+**《政府资料开放授权条款 - 第 1 版》** 释出 —— 个人与企业均可免费使用，
+使用时保留来源标注即可。
+
+码位映射参考 Unicode 18.0
 [`SealSources.txt`](https://www.unicode.org/Public/18.0.0/ucd/SealSources.txt)。
-
-若要可商用的替代方案，可考虑台湾「全字库说文解字」（6712 字，政府开放授权），
-但其官网在中国大陆需代理访问。

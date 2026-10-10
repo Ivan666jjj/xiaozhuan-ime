@@ -6,10 +6,13 @@
 2. :class:`~core.pinyin_engine.PinyinEngine` —— 拼音 → 汉字候选
 3. OpenCC ``TSCharacters.txt`` —— 简体 → 《说文》所用正字（多为繁体）
 
+字形是否**真的打得出**，由 ``data/glyph_coverage.json``（``font/build_font.py``
+的产物）把关：Unicode 的小篆区块有 11,328 个码位，而全字库说文解字只收了
+6,738 个汉字，对不上的码位没有字形，必须过滤，否则上屏是豆腐块。
+
 另有一层**补区**：Unicode 18.0 的小篆区块并未涵盖《说文》全部字（实测「七」
 「二」「五」「小」「之」等常用字的 ``kSEAL_MCJK`` 被记成了扩展区古字，因而查
-不到码位）。这类字由 ``tools/fetch_pua.py`` 单独抓汉典篆形，编码到 PUA-A
-（``0xF0000 + (码位 - 0x3400)``），映射落在 ``data/pua_map.json``。
+不到码位）。这类字改用补区 PUA-A 承载（``0xF0000 + (码位 - 0x3400)``）。
 
 对外主接口::
 
@@ -76,30 +79,49 @@ class ZhuanEngine:
         cache = self.root / "data" / "pinyin_cache.json" if use_cache else None
         self.pinyin = PinyinEngine(cache=cache)
         self._simp2trad = _load_simp2trad(self.root / "data" / "TSCharacters.txt")
-        self._pua = self._load_pua(self.root / "data" / "pua_map.json")
+        self._covered, self._pua = self._load_coverage(
+            self.root / "data" / "glyph_coverage.json"
+        )
 
     @staticmethod
-    def _load_pua(path: Path) -> dict[str, int]:
-        """读补区映射（汉字 -> PUA 码位）。"""
+    def _load_coverage(path: Path) -> tuple[set[str] | None, dict[str, int]]:
+        """读字形覆盖表，返回（主区有字形的 Seal 码位, 补区 汉字->PUA码位）。
+
+        ``None`` 表示没有覆盖表 —— 此时不限制主区（退回旧行为，
+        便于在构建产物缺失时仍能跑转换内核）。
+        """
         if not path.is_file():
-            return {}
+            return None, {}
         try:
             raw = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
-            return {}
-        return {k: int(v) for k, v in raw.items() if isinstance(k, str)}
+            return None, {}
+        if not isinstance(raw, dict):
+            return None, {}
+        seal = set(raw.get("seal") or "")
+        pua_raw = raw.get("pua") or {}
+        pua = {k: int(v) for k, v in pua_raw.items() if isinstance(k, str)}
+        return (seal or None), pua
 
     # ---- 单字 -----------------------------------------------------
+    def _seal_ok(self, seal_char: str) -> bool:
+        """该小篆码位在字体里是否真有字形。"""
+        return self._covered is None or seal_char in self._covered
+
     def _lookup(self, char: str) -> str | None:
-        """查篆形：Unicode 小篆区块 -> 简繁规范化重试 -> 补区。"""
+        """查篆形：Unicode 小篆区块 -> 简繁规范化重试 -> 补区。
+
+        主区命中的码位还要过一道字形覆盖检查：Unicode 有码位、但字体里
+        没有字形的，等于打不出来，得继续往补区找。
+        """
         hit = self.index.seal_of(char)
-        if hit:
+        if hit and self._seal_ok(hit):
             return hit
         for trad in self._simp2trad.get(char, ()):
             hit = self.index.seal_of(trad)
-            if hit:
+            if hit and self._seal_ok(hit):
                 return hit
-        # 补区：Unicode 没有码位、但汉典有篆形的常用字
+        # 补区：Unicode 没有码位的《说文》字
         pua = self._pua.get(char)
         if pua:
             return chr(pua)
