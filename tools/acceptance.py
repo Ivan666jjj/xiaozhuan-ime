@@ -91,6 +91,38 @@ def main() -> int:
 
     # 关键：TIS 认得 ≠ 用户在系统设置里看得到。
     # 必须确认它进了「已启用输入源」列表，否则用户会在设置里找不到而以为装失败。
+    # 最关键的验收项：IMK 必须接受这个输入法注册 XPC 端点。
+    # 签名 identifier 与 bundle id 不一致时，imklaunchagent 会在日志里写
+    # "...signing-id=ShuowenIME ... rejected"，输入法虽被 TIS 收录却永远激活不了
+    # （系统设置里看不到、切不过去）。这一项必须在实机跑。
+    codesign_id = run(["codesign", "-dv", str(APP)]).stderr
+    check("签名 identifier 等于 bundle id",
+          "Identifier=com.local.inputmethod.ShuowenSeal" in codesign_id,
+          next((l for l in codesign_id.split("\n") if l.startswith("Identifier=")), "?"))
+
+    exe = APP / "Contents" / "MacOS" / "ShuowenIME"
+    if exe.is_file():
+        import time as _t
+        proc = subprocess.Popen([str(exe)], stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL)
+        _t.sleep(5)
+        imklog = run(["log", "show", "--last", "30s", "--predicate",
+                      'process == "imklaunchagent"']).stdout
+        proc.terminate()
+        relevant = [l for l in imklog.split("\n") if "setIMKXPCEndpoint" in l]
+        # 成功时日志形如：
+        #   "Received setIMKXPCEndpoint:forBundleIdentifier: from InputMethod, endpoint=..."
+        # 其中并不含 bundle id（endpoint 被系统脱敏成 <private>）；
+        # 失败时形如：
+        #   "...(signing-id=ShuowenIME) attempted to register endpoint for <private>, rejected"
+        # 所以判据是「有没有 rejected」，而非「有没有出现名字」。
+        rejected = [l for l in relevant if "rejected" in l.lower()]
+        accepted = [l for l in relevant if "received setimkxpcendpoint" in l.lower()]
+        check("IMK 接受 XPC 端点注册（不被 rejected）",
+              not rejected and bool(accepted),
+              (rejected[-1][-70:] if rejected
+               else (accepted[-1][-58:] if accepted else "未捕获到注册事件")))
+
     imported = run([sys.executable, "tools/enable_inputmethod.py"])
     check("enable_inputmethod.py 可运行", imported.returncode == 0,
           imported.stdout.strip()[:40])

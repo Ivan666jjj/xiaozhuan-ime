@@ -84,6 +84,14 @@ do_install() {
   rm -rf "$DEST"
   mkdir -p "$HOME/Library/Input Methods"
   cp -R "$BUILD/$BUNDLE" "$HOME/Library/Input Methods/"
+  # 必须重新签名，且 identifier 要等于 bundle id。
+  # 否则 imklaunchagent 会拒绝注册 XPC 端点（日志里表现为
+  # "setIMKXPCEndpoint: ... signing-id=ShuowenIME ... rejected"），
+  # 输入法虽被 TIS 收录却永远无法激活。
+  codesign --force --deep --sign - \
+    --identifier "com.local.inputmethod.ShuowenSeal" "$DEST" 2>/dev/null \
+    && echo "已重新签名（identifier=com.local.inputmethod.ShuowenSeal）" \
+    || echo "警告：重新签名失败"
   do_font
   # 让系统重新扫描输入法
   killall -HUP "$NAME" 2>/dev/null || true

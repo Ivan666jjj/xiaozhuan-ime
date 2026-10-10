@@ -49,18 +49,27 @@
 			<dict>
 				<key>TISInputSourceID</key>
 				<string>com.local.inputmethod.ShuowenSeal.Seal</string>
-				<key>TISIntendedLanguage</key>
-				<string>zh-Hans</string>
 				<key>tsInputModeDefaultStateKey</key>
 				<true/>
 				<key>tsInputModeIsVisibleKey</key>
 				<true/>
 				<key>tsInputModePrimaryInScriptKey</key>
 				<true/>
+				<!-- 与微信输入法 / 千问输入法一致：脚本用 smSimpChinese。
+				     先前用 smUnicodeScript 且 PrimaryInScript=true，系统解析不出输入
+				     模式（TIS 里名字显示成 ID 本身、无法切换、系统设置里也看不到）。 -->
 				<key>tsInputModeScriptKey</key>
-				<string>smUnicodeScript</string>
+				<string>smSimpChinese</string>
 				<key>tsInputModeMenuIconFileKey</key>
 				<string>menu_16.png</string>
+				<key>tsInputModePaletteIconFileKey</key>
+				<string>menu_32.png</string>
+				<key>tsInputModeAlternateMenuIconFileKey</key>
+				<string>menu_16.png</string>
+				<key>tsInputModeKeyEquivalentKey</key>
+				<string></string>
+				<key>tsInputModeKeyEquivalentModifiersKey</key>
+				<integer>4608</integer>
 				<key>TISIconLabels</key>
 				<dict>
 					<key>CustomIcon</key>
