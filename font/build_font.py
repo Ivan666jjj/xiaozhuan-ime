@@ -296,6 +296,12 @@ HANZI_SEAL_OVERRIDE: dict[str, int] = {
 #: 膨胀失败的码位（逐个字形容错，避免一颗老鼠屎坏一锅汤）
 DILATE_FAILED: list[int] = []
 
+#: 素材本身就没有轮廓的码位。
+#: 全字库对少数汉字是「有码位、无字形」的空壳（实测 10 个：丫乞倘刁紌罜茘隞魛鱽），
+#: 汉典那边也没有对应素材。这类字**不入 cmap** —— 让系统 fallback 到别的字体，
+#: 比留一个空白字形好（空白打出来什么都没有，用户会以为输入法坏了）。
+EMPTY_SOURCE: list[int] = []
+
 
 def dilate_glyph(glyph, delta: float, tag: int = 0):
     """把字形轮廓向外膨胀 `delta` 单位（笔画宽度 +2δ）。
@@ -472,7 +478,13 @@ def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None,
     glyphs = {".notdef": TTGlyphPen(None).glyph()}
     cmap: dict[int, str] = {}
 
-    def add_ebas(modern_cp: int, target_cp: int) -> None:
+    def add_ebas(modern_cp: int, target_cp: int) -> bool:
+        """把全字库字形加工后编到 target_cp。**字形为空则拒绝**。
+
+        全字库有少数汉字是「有码位、无轮廓」的空壳（实测 10 个：丫乞倘刁紌罜
+        茘隞魛鱽）。若不拦住，cmap 里会留下一个空白字形 —— 打出来什么都没有，
+        比缺字更糟（缺字至少会 fallback 到系统字体）。
+        """
         name = f"u{target_cp:05X}"
         pen = TTGlyphPen(None)
         # **全局**矩阵：全库共用一个缩放/平移，保持字形之间的相对大小。
@@ -481,10 +493,15 @@ def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None,
         # 全字库高度中位 90% em、p25~p75 只差 4%，不需要逐字纠正。
         eb_glyf[eb_cmap[modern_cp]].draw(
             TransformPen(RoundingPen(pen), ebas_matrix), eb_glyf)
+        g = pen.glyph()
+        if g.numberOfContours <= 0:
+            EMPTY_SOURCE.append(modern_cp)
+            return False
         glyph_order.append(name)
         # 全字库的笔画天生偏粗，按用户要求整体收细（断笔的字自动退回原样）
-        glyphs[name] = erode_glyph(pen.glyph(), EBAS_ERODE, tag=target_cp)
+        glyphs[name] = erode_glyph(g, EBAS_ERODE, tag=target_cp)
         cmap[target_cp] = name
+        return True
 
     def add_svg(svg_file: Path, target_cp: int) -> bool:
         paths = glyph_paths(svg_file.read_text(encoding="utf-8"))
@@ -578,8 +595,17 @@ def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None,
         seal_cp = ord(e.char)
         made = False
         if seal_cp in ebas_seal:
-            add_ebas(ebas_seal[seal_cp], seal_cp)
-            made = True
+            if add_ebas(ebas_seal[seal_cp], seal_cp):
+                made = True
+            else:
+                # 全字库对少数汉字是空壳（有码位无轮廓），退回汉典素材
+                svg = raw_files.get(f"{seal_cp:04X}")
+                if svg is not None and svg_matrix is not None:
+                    if add_svg(svg, seal_cp):
+                        zdic_seal_used.append(seal_cp)
+                        made = True
+                    else:
+                        zdic_seal_failed.append(seal_cp)
         else:
             svg = raw_files.get(f"{seal_cp:04X}")
             if svg is not None and svg_matrix is not None:
@@ -623,8 +649,8 @@ def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None,
     for modern_cp, pua_cp in sorted(ebas_pua.items()):
         if pua_cp in cmap:      # 已被占用（不该发生，保险起见）
             continue
-        add_ebas(modern_cp, pua_cp)
-        link_hanzi(modern_cp, pua_cp)
+        if add_ebas(modern_cp, pua_cp):
+            link_hanzi(modern_cp, pua_cp)
 
     n_simp = link_simplified()
 
@@ -740,6 +766,22 @@ def verify(font_path: Path, coverage_path: Path | None) -> list[str]:
         missing += [f"U+{ord(c):04X}" for c in cov.get("hanzi", "") if ord(c) not in cmap]
         if missing:
             problems.append(f"覆盖表里 {len(missing)} 个码位在字体里没有字形：{missing[:5]}")
+
+    # 空字形：码位在 cmap 里、但指向的字形没有任何轮廓 —— 打出来是一片空白。
+    # 这比「缺字」更糟：缺字时系统会 fallback 到别的字体，至少看得见字。
+    # 之前只查了「码位在不在」，漏掉这种情况（实测漏过 10 个字：
+    # 丫乞倘刁紌罜茘隞魛鱽），所以这里补一道。
+    seen: set[str] = set()
+    blank: list[str] = []
+    for cp in sorted(cmap):
+        name = cmap[cp]
+        if name in seen:
+            continue
+        seen.add(name)
+        if glyf[name].numberOfContours <= 0:
+            blank.append(f"U+{cp:04X}")
+    if blank:
+        problems.insert(0, f"{len(blank)} 个码位指向空字形（打出来是空白）：{blank[:10]}")
 
     return problems
 
