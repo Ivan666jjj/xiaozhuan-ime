@@ -59,9 +59,15 @@ sys.path.insert(0, str(ROOT))
 from core.seal_index import SealDataError, SealIndex  # noqa: E402
 
 UNITS_PER_EM = 1000
-#: 字面占 em 的比例（四周留白）。0.80 是照「第一版」的观感定的 ——
-#: 那版字形小、留白多、显清秀；0.88 会把字撑得偏满。
-CONTENT_RATIO = 0.80
+#: 字形**高度中位数**的目标（占 em 的比例）。
+#: 实测标准字体：微软雅黑 96%、华文黑体 91%。篆书字形不规则，
+#: 撑太满容易与邻字相撞，取 90% 留一点余量。
+TARGET_GLYPH_RATIO = 0.90
+
+#: 字形**底端**的落点（占 em 的比例，baseline 为 0）。
+#: 标准字体是「坐」在基线上的：微软雅黑下界中位在 -13% em、垂直中心约 35%。
+#: 原来我们把字形**居中**在 em box（中心 50%），跟别的字体混排时显得「飘」。
+BASELINE_BOTTOM = -0.13
 QUANTILE_LO, QUANTILE_HI = 0.01, 0.99
 
 #: 汉典字形的「大小收敛」强度（0 = 不收敛、1 = 完全拉齐）。
@@ -328,47 +334,22 @@ def _quantile_frame(boxes: list[tuple[float, float, float, float]]):
             pick(xs1, QUANTILE_HI), pick(ys1, QUANTILE_HI))
 
 
-def _fit(frame, flip_y: bool) -> tuple[float, ...]:
-    """内容框 -> 目标框 [60,940] 的仿射矩阵（整体归一化，作兜底用）。"""
-    cx0, cy0, cx1, cy1 = frame
-    span_w, span_h = cx1 - cx0, cy1 - cy0
-    target = UNITS_PER_EM * CONTENT_RATIO
-    s = target / max(span_w, span_h)
-    ox = (UNITS_PER_EM - span_w * s) / 2.0 - cx0 * s
-    if flip_y:
-        # SVG y 轴向下：先把下边界送到目标框底部
-        oy = (UNITS_PER_EM - span_h * s) / 2.0 + cy1 * s
-        return (s, 0.0, 0.0, -s, ox, oy)
-    oy = (UNITS_PER_EM - span_h * s) / 2.0 - cy0 * s
-    return (s, 0.0, 0.0, s, ox, oy)
+def _fit(frame, flip_y: bool, glyph_median_h: float) -> tuple[float, ...]:
+    """内容框 + 字形高度中位 -> 仿射矩阵。
 
-
-def glyph_matrix(bounds, flip_y: bool) -> tuple[float, ...] | None:
-    """**逐字形**归一化：按该字自己的包围盒等比缩放，再居中到 em 方框中心。
-
-    为什么必须逐字形做：原始字型的扫描/描摹字形大小相差极大
-    （实测 9,921 个汉字的高度极差 943 单位，而 em 才 1000；上下位置极差 438），
-    若全库共用一个缩放矩阵，排出来就是「忽大忽小、上下跳动」，
-    看着像一张张插图而不是一套字 —— 这正是专业字库「修字」环节要解决的第一个问题。
-
-    做法照业界通行的 **border normalization**：取字形最长边缩放到统一的目标边长
-    （等比，不拉伸，所以笔画相对粗细不变），再把**包围盒中心**对齐到 em 中心。
+    跟标准字体（微软雅黑/华文黑体）对齐两件事：
+    1. **字面率** —— 字形高度中位缩放到 90% em（原来按内容框定，只到 73%）；
+    2. **基线** —— 字形底端落在 baseline 下方 13% 处，而不是居中摆。
     """
-    if not bounds:
-        return None
-    x0, y0, x1, y1 = bounds
-    w, h = x1 - x0, y1 - y0
-    if w <= 0 or h <= 0:
-        return None
-    target = UNITS_PER_EM * CONTENT_RATIO
-    s = target / max(w, h)
-    cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
-    ox = UNITS_PER_EM / 2.0 - cx * s
+    cx0, cy0, cx1, cy1 = frame
+    s = (UNITS_PER_EM * TARGET_GLYPH_RATIO) / glyph_median_h
+    span_w = cx1 - cx0
+    ox = (UNITS_PER_EM - span_w * s) / 2.0 - cx0 * s
+    bottom = BASELINE_BOTTOM * UNITS_PER_EM
     if flip_y:
-        oy = UNITS_PER_EM / 2.0 + cy * s          # y 轴镜像
-        return (s, 0.0, 0.0, -s, ox, oy)
-    oy = UNITS_PER_EM / 2.0 - cy * s
-    return (s, 0.0, 0.0, s, ox, oy)
+        # SVG y 轴向下：内容框下边界对应字形底端
+        return (s, 0.0, 0.0, -s, ox, bottom + cy1 * s)
+    return (s, 0.0, 0.0, s, ox, bottom - cy0 * s)
 
 
 def compute_ebas_matrix(glyf, cmap: dict[int, str], codes: list[int]):
@@ -382,9 +363,11 @@ def compute_ebas_matrix(glyf, cmap: dict[int, str], codes: list[int]):
         if bp.bounds:
             boxes.append(bp.bounds)
     frame = _quantile_frame(boxes)
+    heights = sorted(b[3] - b[1] for b in boxes)
+    median_h = float(heights[len(heights) // 2])
     print(f"{ZEBRA}全字库内容框 x[{frame[0]:.0f},{frame[2]:.0f}] "
-          f"y[{frame[1]:.0f},{frame[3]:.0f}]")
-    return _fit(frame, flip_y=False)
+          f"y[{frame[1]:.0f},{frame[3]:.0f}]（字形高度中位 {median_h:.0f}）")
+    return _fit(frame, flip_y=False, glyph_median_h=median_h)
 
 
 def compute_svg_matrix(raw_files: dict[str, Path], pua_files: dict[str, Path]):
@@ -401,10 +384,10 @@ def compute_svg_matrix(raw_files: dict[str, Path], pua_files: dict[str, Path]):
     boxes = [b for b in (svg_bounds(f) for f in files[::step]) if b]
     frame = _quantile_frame(boxes)
     heights = sorted(b[3] - b[1] for b in boxes)
-    median_h = heights[len(heights) // 2]
+    median_h = float(heights[len(heights) // 2])
     print(f"{ZEBRA}汉典 SVG 内容框 x[{frame[0]:.0f},{frame[2]:.0f}] "
-          f"y[{frame[1]:.0f},{frame[3]:.0f}]（抽样 {len(boxes)}，高度中位 {median_h:.0f}）")
-    return _fit(frame, flip_y=True), median_h
+          f"y[{frame[1]:.0f},{frame[3]:.0f}]（抽样 {len(boxes)}，高度中位 {median_h:.0f}/400）")
+    return _fit(frame, flip_y=True, glyph_median_h=median_h), median_h
 
 
 # ------------------------------------------------------------ 主流程
