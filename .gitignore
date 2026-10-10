@@ -1,6 +1,7 @@
 # 抓取物与生成物：体积大且可重建，不入库
 fonts/raw/
 fonts/pua/
+fonts/kaiyuan/
 build/
 dist/
 data/pinyin_cache.json

@@ -446,7 +446,8 @@ def compute_svg_matrix(raw_files: dict[str, Path], pua_files: dict[str, Path]):
 # ------------------------------------------------------------ 主流程
 
 def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None,
-          zdic_raw: Path | None, zdic_pua: Path | None) -> dict[str, int]:
+          zdic_raw: Path | None, zdic_pua: Path | None,
+          kaiyuan: Path | None = None) -> dict[str, int]:
     eb = TTFont(str(ebas), fontNumber=0)
     eb_glyf = eb["glyf"]
     eb_cmap = eb.getBestCmap()
@@ -474,6 +475,21 @@ def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None,
     svg_matrix, svg_median_h = (compute_svg_matrix(raw_files, pua_files)
                                  if raw_files else (None, None))
 
+    # --- 开源小篆（优先源，SIL OFL 1.1）---
+    # 由 font/build_kaiyuan.py 从上游 SVG 转出，坐标系已对齐（y 轴已翻、
+    # 字面率与基线都按本文件的参数设好），所以取来直接编，不再加工。
+    kai_glyf = kai_cmap = None
+    if kaiyuan and Path(kaiyuan).is_file():
+        kf = TTFont(str(kaiyuan), fontNumber=0)
+        kai_glyf, kai_cmap = kf["glyf"], kf.getBestCmap()
+        if kai_cmap:
+            print(f"开源小篆（优先源）：{len(kai_cmap)} 个字形")
+    if kai_glyf is None:
+        print(f"{ZEBRA}没有开源小篆字形（跳过优先源）")
+        if (ROOT / "fonts" / "kaiyuan" / "glyphs").is_dir():
+            print(f"{ZEBRA}  素材在，只是还没转换 —— 跑 "
+                  f"`python3 font/build_kaiyuan.py` 生成优先源")
+
     glyph_order: list[str] = [".notdef"]
     glyphs = {".notdef": TTGlyphPen(None).glyph()}
     cmap: dict[int, str] = {}
@@ -500,6 +516,27 @@ def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None,
         glyph_order.append(name)
         # 全字库的笔画天生偏粗，按用户要求整体收细（断笔的字自动退回原样）
         glyphs[name] = erode_glyph(g, EBAS_ERODE, tag=target_cp)
+        cmap[target_cp] = name
+        return True
+
+    def add_kaiyuan(target_cp: int) -> bool:
+        """从开源小篆取字形 —— **优先源**（SIL OFL 1.1，来源可查）。
+
+        坐标系在 font/build_kaiyuan.py 里已经对齐，取来直接编。它天生不粗，
+        所以也不走收细那一步（收细只针对全字库那套天生偏粗的笔画）。
+        """
+        if kai_glyf is None or kai_cmap is None or target_cp not in kai_cmap:
+            return False
+        name = f"u{target_cp:05X}"
+        if name in glyphs:          # 同码位已编过（重复条目）
+            return True
+        pen = TTGlyphPen(None)
+        kai_glyf[kai_cmap[target_cp]].draw(pen, kai_glyf)
+        g = pen.glyph()
+        if g.numberOfContours <= 0:
+            return False
+        glyph_order.append(name)
+        glyphs[name] = g
         cmap[target_cp] = name
         return True
 
@@ -588,13 +625,17 @@ def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None,
                     added += 1
         return added
 
-    # --- 主区：全字库优先，汉典补缺 ---
+    # --- 主区：开源小篆优先，全字库次之，汉典补缺 ---
     zdic_seal_used: list[int] = []
     zdic_seal_failed: list[int] = []
+    kai_seal_used: list[int] = []
     for e in idx.entries:
         seal_cp = ord(e.char)
         made = False
-        if seal_cp in ebas_seal:
+        if add_kaiyuan(seal_cp):
+            kai_seal_used.append(seal_cp)
+            made = True
+        elif seal_cp in ebas_seal:
             if add_ebas(ebas_seal[seal_cp], seal_cp):
                 made = True
             else:
@@ -620,7 +661,8 @@ def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None,
             if src not in cmap:
                 src = seal_cp
             link_hanzi(ord(e.modern), src)
-    print(f"主区：全字库 {len(ebas_seal)} + 汉典补 {len(zdic_seal_used)} "
+    print(f"主区：开源小篆 {len(kai_seal_used)} + 全字库 {len(ebas_seal) - len(kai_seal_used)} "
+          f"+ 汉典补 {len(zdic_seal_used)} "
           f"= {sum(1 for c in cmap if 0x3D000 <= c <= 0x3FC3F)} 个码位")
     if zdic_seal_failed:
         print(f"{ZEBRA}（汉典 SVG 解析失败 {len(zdic_seal_failed)} 个，已跳过）")
@@ -798,6 +840,11 @@ def main() -> int:
                     help="汉典补区 SVG 目录（补缺用）")
     ap.add_argument("--no-zdic", action="store_true",
                     help="只用全字库，产出可自由分发/商用的版本")
+    ap.add_argument("--kaiyuan",
+                    default=str(ROOT / "font" / "kaiyuan" / "KaiyuanSeal.ttf"),
+                    help="开源小篆字形（优先源，SIL OFL 1.1）")
+    ap.add_argument("--no-kaiyuan", action="store_true",
+                    help="不用开源小篆，退回「全字库优先」的老路径")
     args = ap.parse_args()
 
     ebas, out = Path(args.ebas), Path(args.out)
@@ -807,8 +854,12 @@ def main() -> int:
 
     zdic_raw = None if args.no_zdic else Path(args.zdic_raw)
     zdic_pua = None if args.no_zdic else Path(args.zdic_pua)
+    # 注意：--no-zdic 排的是汉典（仅个人使用），开元是 OFL 1.1、本就可自由分发，
+    # 所以不跟着一起排掉 —— 纯开元/全字库的组合反而更干净。
+    kaiyuan = None if args.no_kaiyuan else Path(args.kaiyuan)
 
-    stats = build(ebas, Path(args.data), out, Path(args.coverage), zdic_raw, zdic_pua)
+    stats = build(ebas, Path(args.data), out, Path(args.coverage),
+                  zdic_raw, zdic_pua, kaiyuan)
     print(f"\n合成完成：{stats['glyphs']} 个字形，cmap {stats['cmapEntries']} 项")
     print(f"  主区 {stats['sealCodepoints']} 码位（其中汉典补 {stats['zdicSeal']}）")
     print(f"  补区 {stats['puaCodepoints']} 码位（其中汉典补 {stats['zdicPua']}）")
