@@ -24,6 +24,9 @@ macOS 上的小篆输入法，走两条路子：
 
 ## 安装
 
+**下载即用**：[`releases/xiaohuan-xiaozhuan-ime-macOS-v1.0.0.zip`](releases/xiaohuan-xiaozhuan-ime-macOS-v1.0.0.zip)
+解压后运行 `./install.sh`。
+
 ```bash
 # 从源码构建（本项目内）
 ./build.sh install          # 编译 + 装输入法 + 装字体
