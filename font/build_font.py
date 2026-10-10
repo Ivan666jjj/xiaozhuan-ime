@@ -339,14 +339,13 @@ def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None,
 
     def add_ebas(modern_cp: int, target_cp: int) -> None:
         name = f"u{target_cp:05X}"
-        gn = eb_cmap[modern_cp]
-        # 逐字形归一化：先量出这个字自己的包围盒，再按它缩放 + 居中
-        bp = BoundsPen(None)
-        eb_glyf[gn].draw(bp, eb_glyf)
-        matrix = glyph_matrix(bp.bounds, flip_y=False) or ebas_matrix
         pen = TTGlyphPen(None)
-        # 先变换再取整，保证落盘坐标是整数
-        eb_glyf[gn].draw(TransformPen(RoundingPen(pen), matrix), eb_glyf)
+        # **全局**矩阵：全库共用一个缩放/平移，保持字形之间的相对大小。
+        # 不用逐字形归一化 —— 那会把「千」「尺」这类笔画少的字硬撑到满格，
+        # 笔画密的字又因放大而笔画粘连（实测糊成一片），而且原始素材本就规整：
+        # 全字库高度中位 90% em、p25~p75 只差 4%，不需要逐字纠正。
+        eb_glyf[eb_cmap[modern_cp]].draw(
+            TransformPen(RoundingPen(pen), ebas_matrix), eb_glyf)
         glyph_order.append(name)
         glyphs[name] = pen.glyph()
         cmap[target_cp] = name
@@ -355,17 +354,11 @@ def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None,
         paths = glyph_paths(svg_file.read_text(encoding="utf-8"))
         if not paths:
             return False
-        # 逐字形归一化：先量这个 SVG 自己的包围盒（已滤掉水印路径）
-        bp = BoundsPen(None)
-        for d in paths:
-            try:
-                svg_parser.parse_path(d, bp)
-            except Exception:
-                continue
-        matrix = glyph_matrix(bp.bounds, flip_y=True) or svg_matrix
         pen = TTGlyphPen(None)
-        # SVG 用三次贝塞尔，TrueType 只收二次：变换 -> 降阶 -> 取整
-        tpen = TransformPen(Cu2QuPen(RoundingPen(pen), max_err=1.0), matrix)
+        # 同 add_ebas：走**全局**矩阵，不做逐字形归一化。
+        # 汉典素材同样规整（高度中位 82% viewBox，p25~p75 只差 1 单位），
+        # 它和全字库之间那 7 个百分点的整体尺度差，由各自的全局矩阵一次性对齐。
+        tpen = TransformPen(Cu2QuPen(RoundingPen(pen), max_err=1.0), svg_matrix)
         drew = 0
         for d in paths:
             try:
