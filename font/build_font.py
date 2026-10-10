@@ -152,7 +152,7 @@ def _quantile_frame(boxes: list[tuple[float, float, float, float]]):
 
 
 def _fit(frame, flip_y: bool) -> tuple[float, ...]:
-    """内容框 -> 目标框 [60,940] 的仿射矩阵。"""
+    """内容框 -> 目标框 [60,940] 的仿射矩阵（整体归一化，作兜底用）。"""
     cx0, cy0, cx1, cy1 = frame
     span_w, span_h = cx1 - cx0, cy1 - cy0
     target = UNITS_PER_EM * CONTENT_RATIO
@@ -163,6 +163,34 @@ def _fit(frame, flip_y: bool) -> tuple[float, ...]:
         oy = (UNITS_PER_EM - span_h * s) / 2.0 + cy1 * s
         return (s, 0.0, 0.0, -s, ox, oy)
     oy = (UNITS_PER_EM - span_h * s) / 2.0 - cy0 * s
+    return (s, 0.0, 0.0, s, ox, oy)
+
+
+def glyph_matrix(bounds, flip_y: bool) -> tuple[float, ...] | None:
+    """**逐字形**归一化：按该字自己的包围盒等比缩放，再居中到 em 方框中心。
+
+    为什么必须逐字形做：原始字型的扫描/描摹字形大小相差极大
+    （实测 9,921 个汉字的高度极差 943 单位，而 em 才 1000；上下位置极差 438），
+    若全库共用一个缩放矩阵，排出来就是「忽大忽小、上下跳动」，
+    看着像一张张插图而不是一套字 —— 这正是专业字库「修字」环节要解决的第一个问题。
+
+    做法照业界通行的 **border normalization**：取字形最长边缩放到统一的目标边长
+    （等比，不拉伸，所以笔画相对粗细不变），再把**包围盒中心**对齐到 em 中心。
+    """
+    if not bounds:
+        return None
+    x0, y0, x1, y1 = bounds
+    w, h = x1 - x0, y1 - y0
+    if w <= 0 or h <= 0:
+        return None
+    target = UNITS_PER_EM * CONTENT_RATIO
+    s = target / max(w, h)
+    cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
+    ox = UNITS_PER_EM / 2.0 - cx * s
+    if flip_y:
+        oy = UNITS_PER_EM / 2.0 + cy * s          # y 轴镜像
+        return (s, 0.0, 0.0, -s, ox, oy)
+    oy = UNITS_PER_EM / 2.0 - cy * s
     return (s, 0.0, 0.0, s, ox, oy)
 
 
@@ -231,10 +259,14 @@ def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None,
 
     def add_ebas(modern_cp: int, target_cp: int) -> None:
         name = f"u{target_cp:05X}"
+        gn = eb_cmap[modern_cp]
+        # 逐字形归一化：先量出这个字自己的包围盒，再按它缩放 + 居中
+        bp = BoundsPen(None)
+        eb_glyf[gn].draw(bp, eb_glyf)
+        matrix = glyph_matrix(bp.bounds, flip_y=False) or ebas_matrix
         pen = TTGlyphPen(None)
         # 先变换再取整，保证落盘坐标是整数
-        eb_glyf[eb_cmap[modern_cp]].draw(
-            TransformPen(RoundingPen(pen), ebas_matrix), eb_glyf)
+        eb_glyf[gn].draw(TransformPen(RoundingPen(pen), matrix), eb_glyf)
         glyph_order.append(name)
         glyphs[name] = pen.glyph()
         cmap[target_cp] = name
@@ -243,9 +275,17 @@ def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None,
         paths = glyph_paths(svg_file.read_text(encoding="utf-8"))
         if not paths:
             return False
+        # 逐字形归一化：先量这个 SVG 自己的包围盒（已滤掉水印路径）
+        bp = BoundsPen(None)
+        for d in paths:
+            try:
+                svg_parser.parse_path(d, bp)
+            except Exception:
+                continue
+        matrix = glyph_matrix(bp.bounds, flip_y=True) or svg_matrix
         pen = TTGlyphPen(None)
         # SVG 用三次贝塞尔，TrueType 只收二次：变换 -> 降阶 -> 取整
-        tpen = TransformPen(Cu2QuPen(RoundingPen(pen), max_err=1.0), svg_matrix)
+        tpen = TransformPen(Cu2QuPen(RoundingPen(pen), max_err=1.0), matrix)
         drew = 0
         for d in paths:
             try:
