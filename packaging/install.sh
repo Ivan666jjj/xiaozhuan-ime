@@ -50,7 +50,15 @@ codesign --force --deep --sign - --identifier com.local.inputmethod.ShuowenSeal 
 killall -HUP TextInputMenuAgent 2>/dev/null || true
 killall -HUP TextInputSwitcher 2>/dev/null || true
 
-# 自动加入输入法启用列表（等同于点 + 添加）
+# 关键一步：调用 TISRegisterInputSource 注册。
+# 只把 app 放进 ~/Library/Input Methods/ 系统不会自动注册它。
+if [ -x "$APP_DST/Contents/MacOS/ShuowenIME" ]; then
+  say "注册输入法"
+  "$APP_DST/Contents/MacOS/ShuowenIME" --register-input-source && ok "已注册" || true
+  "$APP_DST/Contents/MacOS/ShuowenIME" --enable-input-source || true
+fi
+
+# 兜底：加入启用列表（等同于点 + 添加）
 if [ -f "$ROOT/enable_inputmethod.py" ]; then
   say "启用输入法"
   python3 "$ROOT/enable_inputmethod.py" && ok "已加入启用列表" || true

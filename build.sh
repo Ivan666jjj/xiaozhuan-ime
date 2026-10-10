@@ -103,7 +103,15 @@ do_install() {
   # 让系统重新扫描输入法
   killall -HUP "$NAME" 2>/dev/null || true
   killall -HUP TextInputMenuAgent 2>/dev/null || true
-  # 自动加入启用列表（否则系统设置里看不到，需要手动点 +）
+  # 关键：必须调用 TISRegisterInputSource 注册，系统才会「认识」这个输入法。
+  # 只把 .app 拷进 ~/Library/Input Methods/ 是不够的 —— 实测仅拷贝 + 重启服务 +
+  # 反复注销重登，它都不会出现在系统设置的输入法列表里。
+  echo "==> 注册输入法（TISRegisterInputSource）"
+  if [ -x "$DEST/Contents/MacOS/ShuowenIME" ]; then
+    "$DEST/Contents/MacOS/ShuowenIME" --register-input-source || true
+    "$DEST/Contents/MacOS/ShuowenIME" --enable-input-source || true
+  fi
+  # 兜底：也写一次偏好（部分系统版本上 TIS 注册后仍需此项）
   python3 "$ROOT/tools/enable_inputmethod.py" 2>/dev/null || true
   echo
   echo "已安装到：$DEST"

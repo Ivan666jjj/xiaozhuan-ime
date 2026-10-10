@@ -28,9 +28,13 @@
 	<string>ShuowenIME</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>10.13</string>
-	<!-- 输入法常驻后台，不出现在 Dock -->
+	<!-- 输入法常驻后台，不出现在 Dock / App 切换器。
+	     LSBackgroundOnly 与 LSUIElement 两个都要给 —— 对照能正常工作的
+	     开源输入法（wenmo-mac、Apple IMKitSample、千问、微信）确认过。 -->
+	<key>LSBackgroundOnly</key>
+	<true/>
 	<key>LSUIElement</key>
-	<string>1</string>
+	<true/>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 

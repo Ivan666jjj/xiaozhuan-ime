@@ -132,6 +132,19 @@ def main() -> int:
               (rejected[-1][-70:] if rejected
                else (accepted[-1][-58:] if accepted else "未捕获到注册事件")))
 
+    # 最关键的一步：TISRegisterInputSource。
+    # 只把 .app 拷进 ~/Library/Input Methods/ 系统不会注册它，
+    # 必须由 app 自己调用该 API，否则永远不出现在系统设置里。
+    exe2 = APP / "Contents" / "MacOS" / "ShuowenIME"
+    if exe2.is_file():
+        reg = run([str(exe2), "--register-input-source"])
+        check("TISRegisterInputSource 注册成功", reg.returncode == 0,
+              (reg.stdout or reg.stderr).strip()[:56])
+        st = run([str(exe2), "--status-input-source"])
+        check("注册后能找到输入模式且已启用",
+              "找到输入模式" in st.stdout and "true" in st.stdout,
+              st.stdout.replace("\n", " / ")[:70])
+
     imported = run([sys.executable, "tools/enable_inputmethod.py"])
     check("enable_inputmethod.py 可运行", imported.returncode == 0,
           imported.stdout.strip()[:40])
