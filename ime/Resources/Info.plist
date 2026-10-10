@@ -22,6 +22,10 @@
 	<string>1</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
+	<key>CFBundleIconFile</key>
+	<string>ShuowenIME.icns</string>
+	<key>CFBundleIconName</key>
+	<string>ShuowenIME</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>10.13</string>
 	<!-- 输入法常驻后台，不出现在 Dock -->
@@ -87,5 +91,8 @@
 	<array>
 		<string>Hans</string>
 	</array>
+	<!-- 与千问输入法一致：顶层还要给输入法一个图标，系统设置里才显示得出来 -->
+	<key>tsInputMethodIconFileKey</key>
+	<string>shuowen_menu_icon.pdf</string>
 </dict>
 </plist>

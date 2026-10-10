@@ -44,10 +44,17 @@ do_build() {
   printf 'APPL????' > "$BUILD/$BUNDLE/Contents/PkgInfo"
   cp "$ROOT/ime/Resources/seal_dict.json" "$BUILD/$BUNDLE/Contents/Resources/"
   cp "$ROOT/build/$FONT" "$BUILD/$BUNDLE/Contents/Resources/"
-  # 本地化（影响菜单里显示的输入法名）
+  # 本地化（影响菜单里显示的输入法名与输入模式名）
   if [ -d "$ROOT/ime/Resources/zh-Hans.lproj" ]; then
     cp -R "$ROOT/ime/Resources/zh-Hans.lproj" "$BUILD/$BUNDLE/Contents/Resources/"
   fi
+  [ -f "$ROOT/ime/Resources/InfoPlist.strings" ] && \
+    cp "$ROOT/ime/Resources/InfoPlist.strings" "$BUILD/$BUNDLE/Contents/Resources/"
+  # 图标（系统设置里显示输入法要用到）
+  [ -f "$ROOT/ime/Resources/ShuowenIME.icns" ] && \
+    cp "$ROOT/ime/Resources/ShuowenIME.icns" "$BUILD/$BUNDLE/Contents/Resources/"
+  [ -f "$ROOT/ime/Resources/shuowen_menu_icon.pdf" ] && \
+    cp "$ROOT/ime/Resources/shuowen_menu_icon.pdf" "$BUILD/$BUNDLE/Contents/Resources/"
   # 菜单图标
   for icon in menu_16.png menu_32.png; do
     [ -f "$ROOT/ime/Resources/$icon" ] && \

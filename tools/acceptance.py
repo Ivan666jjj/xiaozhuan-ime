@@ -86,6 +86,15 @@ def main() -> int:
         check("显示名为「小焕的小篆输入法」", "小焕的小篆输入法" in o)
         check("属于键盘类输入法（系统设置里会显示）", r.returncode == 0,
               o.strip().split("\n")[-1][:56])
+        # 输入模式名必须是友好名而不是 ID 本身。
+        # 显示成 "com.xxx.yyy.Seal" 说明系统没解析出该模式的元数据 ——
+        # 这时即使 TIS 收录了它，系统设置里也不会出现、也切不过去。
+        mode_line = next((l for l in o.split("\n") if "TISKeyboardInputMode" in l
+                          or l.strip().endswith("TISTypeKeyboardInputMode")), "")
+        mode_name = mode_line.split("|")[1].strip() if "|" in mode_line else ""
+        check("输入模式显示为友好名（不是 ID 本身）",
+              bool(mode_name) and not mode_name.startswith("com."),
+              f"模式名 = {mode_name or '?'}")
     else:
         check("TIS 检查工具可用", False, "需要 swiftc 编译 tools/tis_check.swift")
 
