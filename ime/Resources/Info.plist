@@ -28,18 +28,21 @@
 	<string>ShuowenIME</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>10.13</string>
-	<!-- 输入法常驻后台，不出现在 Dock / App 切换器。
-	     LSBackgroundOnly 与 LSUIElement 两个都要给 —— 对照能正常工作的
-	     开源输入法（wenmo-mac、Apple IMKitSample、千问、微信）确认过。 -->
-	<key>LSBackgroundOnly</key>
-	<true/>
+	<!-- 输入法常驻后台、不出现在 Dock / App 切换器。
+	     只用 LSUIElement 就够（千问输入法就是 LSUIElement=true + LSBackgroundOnly=false）。
+	     ⚠️ 不要再加 LSBackgroundOnly=true：那会把 app 标记成「纯后台进程、不得连接
+	     窗口服务器」，输入法需要显示候选窗，会因此加载失败（表现为 TIS 里能枚举、
+	     TISSelectInputSource 却返回 paramErr(-50)、切换键里永远轮不到它）。 -->
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 
+	<!-- 必须与 CFBundleIdentifier 同形：<bundleID>_Connection。
+	     macOS 26+ 的 imklaunchagent 会拒绝其它形式的连接名，
+	     导致输入法注册得上、却永远无法被选中（TISSelectInputSource 返回 -50）。 -->
 	<key>InputMethodConnectionName</key>
-	<string>ShuowenIME_Connection</string>
+	<string>com.local.inputmethod.ShuowenSeal_Connection</string>
 	<key>InputMethodServerControllerClass</key>
 	<string>SealInputController</string>
 	<key>InputMethodServerDelegateClass</key>

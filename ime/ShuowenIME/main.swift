@@ -12,7 +12,12 @@ import InputMethodKit
 // 必须调用 TISRegisterInputSource，否则它不会出现在系统设置的输入法列表里
 // （实测：仅拷贝 + 重启服务 + 反复注销重登，都不会让它出现）。
 
-let kConnectionName = "ShuowenIME_Connection"
+// ⚠️ macOS 26+ 起，imklaunchagent 只接受 `$(CFBundleIdentifier)_Connection` 形式的
+// 连接名；别的形式会被拒（日志里报 "Refusing connection name for bundle:
+// unrecognized 'InputMethodConnectionName' value"），表现为输入法已注册、
+// 能枚举、TISSelectInputSource 却返回 paramErr(-50)、切换键里永远轮不到它。
+// 先写成与 Info.plist 一致的常量；下方启动时还会用 Bundle.main 再校一次。
+let kConnectionName = "com.local.inputmethod.ShuowenSeal_Connection"
 
 @objc(AppDelegate)
 final class AppDelegate: NSObject, NSApplicationDelegate {
