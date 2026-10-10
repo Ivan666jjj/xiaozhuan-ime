@@ -1,0 +1,2162 @@
+{
+ "U+3D000": {
+  "members": 6,
+  "modern": "一"
+ },
+ "U+3D006": {
+  "members": 12,
+  "modern": "丄"
+ },
+ "U+3D012": {
+  "members": 84,
+  "modern": "示"
+ },
+ "U+3D066": {
+  "members": 2,
+  "modern": "三"
+ },
+ "U+3D068": {
+  "members": 5,
+  "modern": "王"
+ },
+ "U+3D06D": {
+  "members": 159,
+  "modern": "王"
+ },
+ "U+3D10C": {
+  "members": 4,
+  "modern": "玨"
+ },
+ "U+3D110": {
+  "members": 3,
+  "modern": "气"
+ },
+ "U+3D113": {
+  "members": 5,
+  "modern": "士"
+ },
+ "U+3D118": {
+  "members": 5,
+  "modern": "丨"
+ },
+ "U+3D11D": {
+  "members": 11,
+  "modern": "屮"
+ },
+ "U+3D128": {
+  "members": 495,
+  "modern": "艸"
+ },
+ "U+3D317": {
+  "members": 5,
+  "modern": "蓐"
+ },
+ "U+3D31C": {
+  "members": 4,
+  "modern": "茻"
+ },
+ "U+3D320": {
+  "members": 3,
+  "modern": "𡭔"
+ },
+ "U+3D323": {
+  "members": 13,
+  "modern": "八"
+ },
+ "U+3D330": {
+  "members": 10,
+  "modern": "釆"
+ },
+ "U+3D33A": {
+  "members": 3,
+  "modern": "半"
+ },
+ "U+3D33D": {
+  "members": 49,
+  "modern": "牛"
+ },
+ "U+3D36E": {
+  "members": 4,
+  "modern": "犛"
+ },
+ "U+3D372": {
+  "members": 2,
+  "modern": "告"
+ },
+ "U+3D374": {
+  "members": 208,
+  "modern": "𠙵"
+ },
+ "U+3D448": {
+  "members": 1,
+  "modern": "凵"
+ },
+ "U+3D449": {
+  "members": 8,
+  "modern": "吅"
+ },
+ "U+3D451": {
+  "members": 2,
+  "modern": "哭"
+ },
+ "U+3D453": {
+  "members": 88,
+  "modern": "𧺆"
+ },
+ "U+3D4AB": {
+  "members": 15,
+  "modern": "止"
+ },
+ "U+3D4BA": {
+  "members": 4,
+  "modern": "𣥠"
+ },
+ "U+3D4BE": {
+  "members": 2,
+  "modern": "步"
+ },
+ "U+3D4C0": {
+  "members": 4,
+  "modern": "此"
+ },
+ "U+3D4C4": {
+  "members": 4,
+  "modern": "正"
+ },
+ "U+3D4C8": {
+  "members": 5,
+  "modern": "昰"
+ },
+ "U+3D4CD": {
+  "members": 164,
+  "modern": "辵"
+ },
+ "U+3D571": {
+  "members": 44,
+  "modern": "彳"
+ },
+ "U+3D59D": {
+  "members": 4,
+  "modern": "廴"
+ },
+ "U+3D5A1": {
+  "members": 2,
+  "modern": "㢟"
+ },
+ "U+3D5A3": {
+  "members": 13,
+  "modern": "行"
+ },
+ "U+3D5B0": {
+  "members": 48,
+  "modern": "齒"
+ },
+ "U+3D5E0": {
+  "members": 5,
+  "modern": "牙"
+ },
+ "U+3D5E5": {
+  "members": 98,
+  "modern": "足"
+ },
+ "U+3D647": {
+  "members": 3,
+  "modern": "疋"
+ },
+ "U+3D64A": {
+  "members": 3,
+  "modern": "品"
+ },
+ "U+3D64D": {
+  "members": 6,
+  "modern": "龠"
+ },
+ "U+3D653": {
+  "members": 5,
+  "modern": "𠕋"
+ },
+ "U+3D658": {
+  "members": 8,
+  "modern": "㗊"
+ },
+ "U+3D660": {
+  "members": 4,
+  "modern": "舌"
+ },
+ "U+3D664": {
+  "members": 3,
+  "modern": "干"
+ },
+ "U+3D667": {
+  "members": 5,
+  "modern": "𧮫"
+ },
+ "U+3D66C": {
+  "members": 2,
+  "modern": "只"
+ },
+ "U+3D66E": {
+  "members": 6,
+  "modern": "㕯"
+ },
+ "U+3D674": {
+  "members": 4,
+  "modern": "𠯶"
+ },
+ "U+3D678": {
+  "members": 3,
+  "modern": "𠃚"
+ },
+ "U+3D67B": {
+  "members": 3,
+  "modern": "古"
+ },
+ "U+3D67E": {
+  "members": 9,
+  "modern": "十"
+ },
+ "U+3D687": {
+  "members": 2,
+  "modern": "𠦃"
+ },
+ "U+3D689": {
+  "members": 292,
+  "modern": "言"
+ },
+ "U+3D7AD": {
+  "members": 5,
+  "modern": "誩"
+ },
+ "U+3D7B2": {
+  "members": 7,
+  "modern": "音"
+ },
+ "U+3D7B9": {
+  "members": 4,
+  "modern": "䇂"
+ },
+ "U+3D7BD": {
+  "members": 6,
+  "modern": "丵"
+ },
+ "U+3D7C3": {
+  "members": 4,
+  "modern": "菐"
+ },
+ "U+3D7C7": {
+  "members": 22,
+  "modern": "𠬞"
+ },
+ "U+3D7DD": {
+  "members": 4,
+  "modern": "𡴂"
+ },
+ "U+3D7E1": {
+  "members": 3,
+  "modern": "𠔏"
+ },
+ "U+3D7E4": {
+  "members": 3,
+  "modern": "異"
+ },
+ "U+3D7E7": {
+  "members": 7,
+  "modern": "𦥠"
+ },
+ "U+3D7EE": {
+  "members": 3,
+  "modern": "𦥑"
+ },
+ "U+3D7F1": {
+  "members": 5,
+  "modern": "䢅"
+ },
+ "U+3D7F6": {
+  "members": 4,
+  "modern": "爨"
+ },
+ "U+3D7FA": {
+  "members": 74,
+  "modern": "革"
+ },
+ "U+3D844": {
+  "members": 18,
+  "modern": "鬲"
+ },
+ "U+3D856": {
+  "members": 25,
+  "modern": "䰜"
+ },
+ "U+3D86F": {
+  "members": 6,
+  "modern": "爪"
+ },
+ "U+3D875": {
+  "members": 8,
+  "modern": "𠃨"
+ },
+ "U+3D87D": {
+  "members": 11,
+  "modern": "鬥"
+ },
+ "U+3D888": {
+  "members": 45,
+  "modern": "又"
+ },
+ "U+3D8B4": {
+  "members": 2,
+  "modern": "𠂇"
+ },
+ "U+3D8B6": {
+  "members": 3,
+  "modern": "㕜"
+ },
+ "U+3D8B9": {
+  "members": 3,
+  "modern": "支"
+ },
+ "U+3D8BC": {
+  "members": 7,
+  "modern": "帇"
+ },
+ "U+3D8C3": {
+  "members": 4,
+  "modern": "聿"
+ },
+ "U+3D8C7": {
+  "members": 5,
+  "modern": "𤲿"
+ },
+ "U+3D8CC": {
+  "members": 4,
+  "modern": "隶"
+ },
+ "U+3D8D0": {
+  "members": 5,
+  "modern": "臤"
+ },
+ "U+3D8D5": {
+  "members": 4,
+  "modern": "臣"
+ },
+ "U+3D8D9": {
+  "members": 21,
+  "modern": "殳"
+ },
+ "U+3D8EE": {
+  "members": 7,
+  "modern": "殺"
+ },
+ "U+3D8F5": {
+  "members": 3,
+  "modern": "𠘧"
+ },
+ "U+3D8F8": {
+  "members": 7,
+  "modern": "寸"
+ },
+ "U+3D8FF": {
+  "members": 8,
+  "modern": "皮"
+ },
+ "U+3D907": {
+  "members": 5,
+  "modern": "㼱"
+ },
+ "U+3D90C": {
+  "members": 84,
+  "modern": "攴"
+ },
+ "U+3D960": {
+  "members": 5,
+  "modern": "教"
+ },
+ "U+3D965": {
+  "members": 10,
+  "modern": "卜"
+ },
+ "U+3D96F": {
+  "members": 6,
+  "modern": "用"
+ },
+ "U+3D975": {
+  "members": 2,
+  "modern": "爻"
+ },
+ "U+3D977": {
+  "members": 4,
+  "modern": "㸚"
+ },
+ "U+3D97B": {
+  "members": 4,
+  "modern": "𥄎"
+ },
+ "U+3D97F": {
+  "members": 131,
+  "modern": "目"
+ },
+ "U+3DA02": {
+  "members": 3,
+  "modern": "䀠"
+ },
+ "U+3DA05": {
+  "members": 3,
+  "modern": "眉"
+ },
+ "U+3DA08": {
+  "members": 3,
+  "modern": "盾"
+ },
+ "U+3DA0B": {
+  "members": 3,
+  "modern": "𦣹"
+ },
+ "U+3DA0E": {
+  "members": 10,
+  "modern": "白"
+ },
+ "U+3DA18": {
+  "members": 5,
+  "modern": "鼻"
+ },
+ "U+3DA1D": {
+  "members": 3,
+  "modern": "皕"
+ },
+ "U+3DA20": {
+  "members": 2,
+  "modern": "習"
+ },
+ "U+3DA22": {
+  "members": 38,
+  "modern": "𦏲"
+ },
+ "U+3DA48": {
+  "members": 51,
+  "modern": "隹"
+ },
+ "U+3DA7B": {
+  "members": 3,
+  "modern": "奞"
+ },
+ "U+3DA7E": {
+  "members": 6,
+  "modern": "雈"
+ },
+ "U+3DA84": {
+  "members": 3,
+  "modern": "𠁥"
+ },
+ "U+3DA87": {
+  "members": 4,
+  "modern": "𥄕"
+ },
+ "U+3DA8B": {
+  "members": 28,
+  "modern": "羊"
+ },
+ "U+3DAA7": {
+  "members": 3,
+  "modern": "羴"
+ },
+ "U+3DAAA": {
+  "members": 2,
+  "modern": "瞿"
+ },
+ "U+3DAAC": {
+  "members": 3,
+  "modern": "雔"
+ },
+ "U+3DAAF": {
+  "members": 4,
+  "modern": "雥"
+ },
+ "U+3DAB3": {
+  "members": 143,
+  "modern": "鳥"
+ },
+ "U+3DB42": {
+  "members": 6,
+  "modern": "烏"
+ },
+ "U+3DB48": {
+  "members": 6,
+  "modern": "𠦒"
+ },
+ "U+3DB4E": {
+  "members": 3,
+  "modern": "冓"
+ },
+ "U+3DB51": {
+  "members": 3,
+  "modern": "幺"
+ },
+ "U+3DB54": {
+  "members": 3,
+  "modern": "𢆶"
+ },
+ "U+3DB57": {
+  "members": 6,
+  "modern": "叀"
+ },
+ "U+3DB5D": {
+  "members": 4,
+  "modern": "玄"
+ },
+ "U+3DB61": {
+  "members": 3,
+  "modern": "予"
+ },
+ "U+3DB64": {
+  "members": 2,
+  "modern": "放"
+ },
+ "U+3DB67": {
+  "members": 13,
+  "modern": "𠬪"
+ },
+ "U+3DB74": {
+  "members": 8,
+  "modern": "𣦻"
+ },
+ "U+3DB7C": {
+  "members": 42,
+  "modern": "𣦵"
+ },
+ "U+3DBA6": {
+  "members": 5,
+  "modern": "𣦸"
+ },
+ "U+3DBAB": {
+  "members": 3,
+  "modern": "冎"
+ },
+ "U+3DBAE": {
+  "members": 26,
+  "modern": "骨"
+ },
+ "U+3DBC8": {
+  "members": 167,
+  "modern": "𠕎"
+ },
+ "U+3DC6F": {
+  "members": 5,
+  "modern": "筋"
+ },
+ "U+3DC74": {
+  "members": 79,
+  "modern": "𠚣"
+ },
+ "U+3DCC3": {
+  "members": 5,
+  "modern": "刃"
+ },
+ "U+3DCC8": {
+  "members": 3,
+  "modern": "㓞"
+ },
+ "U+3DCCB": {
+  "members": 2,
+  "modern": "丯"
+ },
+ "U+3DCCD": {
+  "members": 8,
+  "modern": "𣐇"
+ },
+ "U+3DCD5": {
+  "members": 45,
+  "modern": "𧢲"
+ },
+ "U+3DD02": {
+  "members": 169,
+  "modern": "竹"
+ },
+ "U+3DDAB": {
+  "members": 7,
+  "modern": "箕"
+ },
+ "U+3DDB2": {
+  "members": 10,
+  "modern": "丌"
+ },
+ "U+3DDBC": {
+  "members": 3,
+  "modern": "左"
+ },
+ "U+3DDBF": {
+  "members": 7,
+  "modern": "工"
+ },
+ "U+3DDC6": {
+  "members": 2,
+  "modern": "㠭"
+ },
+ "U+3DDC8": {
+  "members": 3,
+  "modern": "巫"
+ },
+ "U+3DDCB": {
+  "members": 8,
+  "modern": "𤮺"
+ },
+ "U+3DDD3": {
+  "members": 8,
+  "modern": "曰"
+ },
+ "U+3DDDB": {
+  "members": 6,
+  "modern": "𠄎"
+ },
+ "U+3DDE1": {
+  "members": 4,
+  "modern": "丂"
+ },
+ "U+3DDE5": {
+  "members": 5,
+  "modern": "可"
+ },
+ "U+3DDEA": {
+  "members": 5,
+  "modern": "兮"
+ },
+ "U+3DDEF": {
+  "members": 2,
+  "modern": "号"
+ },
+ "U+3DDF1": {
+  "members": 7,
+  "modern": "亏"
+ },
+ "U+3DDF7": {
+  "members": 3,
+  "modern": "旨"
+ },
+ "U+3DDFA": {
+  "members": 5,
+  "modern": "喜"
+ },
+ "U+3DDFF": {
+  "members": 5,
+  "modern": "壴"
+ },
+ "U+3DE04": {
+  "members": 13,
+  "modern": "鼓"
+ },
+ "U+3DE11": {
+  "members": 2,
+  "modern": "豈"
+ },
+ "U+3DE14": {
+  "members": 8,
+  "modern": "豆"
+ },
+ "U+3DE1C": {
+  "members": 2,
+  "modern": "𧯽"
+ },
+ "U+3DE1E": {
+  "members": 4,
+  "modern": "豐"
+ },
+ "U+3DE22": {
+  "members": 3,
+  "modern": "䖒"
+ },
+ "U+3DE25": {
+  "members": 12,
+  "modern": "虍"
+ },
+ "U+3DE31": {
+  "members": 19,
+  "modern": "虎"
+ },
+ "U+3DE44": {
+  "members": 3,
+  "modern": "虤"
+ },
+ "U+3DE47": {
+  "members": 29,
+  "modern": "皿"
+ },
+ "U+3DE64": {
+  "members": 2,
+  "modern": "𠙴"
+ },
+ "U+3DE66": {
+  "members": 3,
+  "modern": "㚎"
+ },
+ "U+3DE69": {
+  "members": 19,
+  "modern": "血"
+ },
+ "U+3DE7C": {
+  "members": 4,
+  "modern": "丶"
+ },
+ "U+3DE80": {
+  "members": 5,
+  "modern": "丹"
+ },
+ "U+3DE85": {
+  "members": 3,
+  "modern": "青"
+ },
+ "U+3DE88": {
+  "members": 7,
+  "modern": "丼"
+ },
+ "U+3DE8F": {
+  "members": 4,
+  "modern": "皀"
+ },
+ "U+3DE93": {
+  "members": 7,
+  "modern": "鬯"
+ },
+ "U+3DE9A": {
+  "members": 85,
+  "modern": "𩚁"
+ },
+ "U+3DEEF": {
+  "members": 7,
+  "modern": "亼"
+ },
+ "U+3DEF6": {
+  "members": 4,
+  "modern": "會"
+ },
+ "U+3DEFA": {
+  "members": 3,
+  "modern": "倉"
+ },
+ "U+3DEFD": {
+  "members": 8,
+  "modern": "入"
+ },
+ "U+3DF05": {
+  "members": 23,
+  "modern": "缶"
+ },
+ "U+3DF1C": {
+  "members": 14,
+  "modern": "矢"
+ },
+ "U+3DF2A": {
+  "members": 5,
+  "modern": "高"
+ },
+ "U+3DF2F": {
+  "members": 7,
+  "modern": "冂"
+ },
+ "U+3DF36": {
+  "members": 2,
+  "modern": "𩫖"
+ },
+ "U+3DF38": {
+  "members": 3,
+  "modern": "𢂋"
+ },
+ "U+3DF3B": {
+  "members": 6,
+  "modern": "亯"
+ },
+ "U+3DF41": {
+  "members": 7,
+  "modern": "𣆪"
+ },
+ "U+3DF48": {
+  "members": 5,
+  "modern": "畗"
+ },
+ "U+3DF4D": {
+  "members": 6,
+  "modern": "㐭"
+ },
+ "U+3DF53": {
+  "members": 5,
+  "modern": "嗇"
+ },
+ "U+3DF58": {
+  "members": 3,
+  "modern": "來"
+ },
+ "U+3DF5B": {
+  "members": 15,
+  "modern": "麥"
+ },
+ "U+3DF6A": {
+  "members": 18,
+  "modern": "夊"
+ },
+ "U+3DF7C": {
+  "members": 5,
+  "modern": "舛"
+ },
+ "U+3DF81": {
+  "members": 4,
+  "modern": "䑞"
+ },
+ "U+3DF85": {
+  "members": 22,
+  "modern": "韋"
+ },
+ "U+3DF9B": {
+  "members": 3,
+  "modern": "弟"
+ },
+ "U+3DF9E": {
+  "members": 6,
+  "modern": "夂"
+ },
+ "U+3DFA4": {
+  "members": 1,
+  "modern": "久"
+ },
+ "U+3DFA5": {
+  "members": 4,
+  "modern": "桀"
+ },
+ "U+3DFA9": {
+  "members": 475,
+  "modern": "木"
+ },
+ "U+3E184": {
+  "members": 2,
+  "modern": "東"
+ },
+ "U+3E186": {
+  "members": 11,
+  "modern": "林"
+ },
+ "U+3E191": {
+  "members": 1,
+  "modern": "才"
+ },
+ "U+3E192": {
+  "members": 3,
+  "modern": "叒"
+ },
+ "U+3E195": {
+  "members": 3,
+  "modern": "𡳿"
+ },
+ "U+3E198": {
+  "members": 3,
+  "modern": "帀"
+ },
+ "U+3E19B": {
+  "members": 5,
+  "modern": "出"
+ },
+ "U+3E19F": {
+  "members": 7,
+  "modern": "𣎵"
+ },
+ "U+3E1A6": {
+  "members": 6,
+  "modern": "𤯓"
+ },
+ "U+3E1AC": {
+  "members": 1,
+  "modern": "乇"
+ },
+ "U+3E1AD": {
+  "members": 2,
+  "modern": "𠂹"
+ },
+ "U+3E1AF": {
+  "members": 3,
+  "modern": "𠌶"
+ },
+ "U+3E1B2": {
+  "members": 2,
+  "modern": "𦾓"
+ },
+ "U+3E1B4": {
+  "members": 3,
+  "modern": "𥝌"
+ },
+ "U+3E1B7": {
+  "members": 3,
+  "modern": "稽"
+ },
+ "U+3E1BA": {
+  "members": 3,
+  "modern": "巢"
+ },
+ "U+3E1BD": {
+  "members": 3,
+  "modern": "桼"
+ },
+ "U+3E1C0": {
+  "members": 4,
+  "modern": "束"
+ },
+ "U+3E1C4": {
+  "members": 5,
+  "modern": "𣠔"
+ },
+ "U+3E1C9": {
+  "members": 31,
+  "modern": "囗"
+ },
+ "U+3E1E8": {
+  "members": 3,
+  "modern": "員"
+ },
+ "U+3E1EB": {
+  "members": 71,
+  "modern": "貝"
+ },
+ "U+3E232": {
+  "members": 189,
+  "modern": "邑"
+ },
+ "U+3E2EF": {
+  "members": 4,
+  "modern": "𨛜"
+ },
+ "U+3E2F3": {
+  "members": 95,
+  "modern": "日"
+ },
+ "U+3E352": {
+  "members": 2,
+  "modern": "旦"
+ },
+ "U+3E354": {
+  "members": 3,
+  "modern": "倝"
+ },
+ "U+3E357": {
+  "members": 28,
+  "modern": "㫃"
+ },
+ "U+3E373": {
+  "members": 2,
+  "modern": "冥"
+ },
+ "U+3E375": {
+  "members": 9,
+  "modern": "晶"
+ },
+ "U+3E37E": {
+  "members": 13,
+  "modern": "月"
+ },
+ "U+3E38B": {
+  "members": 3,
+  "modern": "有"
+ },
+ "U+3E38E": {
+  "members": 3,
+  "modern": "朙"
+ },
+ "U+3E391": {
+  "members": 4,
+  "modern": "囧"
+ },
+ "U+3E395": {
+  "members": 13,
+  "modern": "夕"
+ },
+ "U+3E3A2": {
+  "members": 5,
+  "modern": "多"
+ },
+ "U+3E3A7": {
+  "members": 3,
+  "modern": "毌"
+ },
+ "U+3E3AA": {
+  "members": 6,
+  "modern": "𢎘"
+ },
+ "U+3E3B0": {
+  "members": 4,
+  "modern": "𣐺"
+ },
+ "U+3E3B4": {
+  "members": 6,
+  "modern": "𠧪"
+ },
+ "U+3E3BA": {
+  "members": 2,
+  "modern": "齊"
+ },
+ "U+3E3BC": {
+  "members": 3,
+  "modern": "朿"
+ },
+ "U+3E3BF": {
+  "members": 9,
+  "modern": "片"
+ },
+ "U+3E3C8": {
+  "members": 7,
+  "modern": "鼎"
+ },
+ "U+3E3CF": {
+  "members": 3,
+  "modern": "𠅏"
+ },
+ "U+3E3D2": {
+  "members": 1,
+  "modern": "彔"
+ },
+ "U+3E3D3": {
+  "members": 102,
+  "modern": "禾"
+ },
+ "U+3E439": {
+  "members": 2,
+  "modern": "秝"
+ },
+ "U+3E43B": {
+  "members": 11,
+  "modern": "黍"
+ },
+ "U+3E446": {
+  "members": 3,
+  "modern": "𪏰"
+ },
+ "U+3E449": {
+  "members": 51,
+  "modern": "米"
+ },
+ "U+3E47C": {
+  "members": 2,
+  "modern": "毇"
+ },
+ "U+3E47E": {
+  "members": 8,
+  "modern": "臼"
+ },
+ "U+3E486": {
+  "members": 2,
+  "modern": "凶"
+ },
+ "U+3E488": {
+  "members": 3,
+  "modern": "𣎳"
+ },
+ "U+3E48B": {
+  "members": 3,
+  "modern": "𣏟"
+ },
+ "U+3E48E": {
+  "members": 4,
+  "modern": "麻"
+ },
+ "U+3E492": {
+  "members": 3,
+  "modern": "尗"
+ },
+ "U+3E495": {
+  "members": 1,
+  "modern": "耑"
+ },
+ "U+3E496": {
+  "members": 7,
+  "modern": "韭"
+ },
+ "U+3E49D": {
+  "members": 8,
+  "modern": "瓜"
+ },
+ "U+3E4A5": {
+  "members": 2,
+  "modern": "瓠"
+ },
+ "U+3E4A7": {
+  "members": 89,
+  "modern": "宀"
+ },
+ "U+3E500": {
+  "members": 2,
+  "modern": "宮"
+ },
+ "U+3E502": {
+  "members": 4,
+  "modern": "呂"
+ },
+ "U+3E506": {
+  "members": 53,
+  "modern": "𥤢"
+ },
+ "U+3E53B": {
+  "members": 12,
+  "modern": "㝱"
+ },
+ "U+3E547": {
+  "members": 112,
+  "modern": "疒"
+ },
+ "U+3E5B7": {
+  "members": 4,
+  "modern": "冖"
+ },
+ "U+3E5BB": {
+  "members": 4,
+  "modern": "𠔼"
+ },
+ "U+3E5BF": {
+  "members": 9,
+  "modern": "冃"
+ },
+ "U+3E5C8": {
+  "members": 3,
+  "modern": "㒳"
+ },
+ "U+3E5CB": {
+  "members": 48,
+  "modern": "网"
+ },
+ "U+3E5FB": {
+  "members": 5,
+  "modern": "襾"
+ },
+ "U+3E600": {
+  "members": 81,
+  "modern": "巾"
+ },
+ "U+3E651": {
+  "members": 4,
+  "modern": "巿"
+ },
+ "U+3E655": {
+  "members": 2,
+  "modern": "帛"
+ },
+ "U+3E657": {
+  "members": 13,
+  "modern": "白"
+ },
+ "U+3E664": {
+  "members": 2,
+  "modern": "㡀"
+ },
+ "U+3E666": {
+  "members": 6,
+  "modern": "黹"
+ },
+ "U+3E66C": {
+  "members": 279,
+  "modern": "人"
+ },
+ "U+3E783": {
+  "members": 5,
+  "modern": "𠤎"
+ },
+ "U+3E788": {
+  "members": 10,
+  "modern": "匕"
+ },
+ "U+3E792": {
+  "members": 3,
+  "modern": "从"
+ },
+ "U+3E795": {
+  "members": 3,
+  "modern": "比"
+ },
+ "U+3E798": {
+  "members": 2,
+  "modern": "北"
+ },
+ "U+3E79A": {
+  "members": 4,
+  "modern": "丠"
+ },
+ "U+3E79E": {
+  "members": 5,
+  "modern": "㐺"
+ },
+ "U+3E7A3": {
+  "members": 6,
+  "modern": "𡔛"
+ },
+ "U+3E7A9": {
+  "members": 3,
+  "modern": "𡍺"
+ },
+ "U+3E7AC": {
+  "members": 5,
+  "modern": "臥"
+ },
+ "U+3E7B1": {
+  "members": 2,
+  "modern": "身"
+ },
+ "U+3E7B3": {
+  "members": 2,
+  "modern": "𠂣"
+ },
+ "U+3E7B5": {
+  "members": 134,
+  "modern": "𠅃"
+ },
+ "U+3E83B": {
+  "members": 3,
+  "modern": "𧚍"
+ },
+ "U+3E83E": {
+  "members": 10,
+  "modern": "老"
+ },
+ "U+3E848": {
+  "members": 13,
+  "modern": "毛"
+ },
+ "U+3E855": {
+  "members": 2,
+  "modern": "毳"
+ },
+ "U+3E857": {
+  "members": 30,
+  "modern": "𡰣"
+ },
+ "U+3E875": {
+  "members": 2,
+  "modern": "尺"
+ },
+ "U+3E877": {
+  "members": 4,
+  "modern": "㞑"
+ },
+ "U+3E87B": {
+  "members": 7,
+  "modern": "𡳐"
+ },
+ "U+3E882": {
+  "members": 19,
+  "modern": "舟"
+ },
+ "U+3E895": {
+  "members": 3,
+  "modern": "方"
+ },
+ "U+3E898": {
+  "members": 7,
+  "modern": "儿"
+ },
+ "U+3E89F": {
+  "members": 2,
+  "modern": "兄"
+ },
+ "U+3E8A1": {
+  "members": 3,
+  "modern": "兂"
+ },
+ "U+3E8A4": {
+  "members": 6,
+  "modern": "皃"
+ },
+ "U+3E8AA": {
+  "members": 2,
+  "modern": "𠑹"
+ },
+ "U+3E8AC": {
+  "members": 2,
+  "modern": "先"
+ },
+ "U+3E8AE": {
+  "members": 2,
+  "modern": "秃"
+ },
+ "U+3E8B0": {
+  "members": 51,
+  "modern": "見"
+ },
+ "U+3E8E3": {
+  "members": 3,
+  "modern": "覞"
+ },
+ "U+3E8E6": {
+  "members": 71,
+  "modern": "欠"
+ },
+ "U+3E92C": {
+  "members": 5,
+  "modern": "㱃"
+ },
+ "U+3E931": {
+  "members": 6,
+  "modern": "㳄"
+ },
+ "U+3E937": {
+  "members": 4,
+  "modern": "㒫"
+ },
+ "U+3E93B": {
+  "members": 106,
+  "modern": "𩑋"
+ },
+ "U+3E9A5": {
+  "members": 2,
+  "modern": "𦣻"
+ },
+ "U+3E9A7": {
+  "members": 6,
+  "modern": "𡇢"
+ },
+ "U+3E9AD": {
+  "members": 1,
+  "modern": "丏"
+ },
+ "U+3E9AE": {
+  "members": 4,
+  "modern": "𩠐"
+ },
+ "U+3E9B2": {
+  "members": 2,
+  "modern": "𥄉"
+ },
+ "U+3E9B4": {
+  "members": 5,
+  "modern": "須"
+ },
+ "U+3E9B9": {
+  "members": 11,
+  "modern": "彡"
+ },
+ "U+3E9C4": {
+  "members": 2,
+  "modern": "彣"
+ },
+ "U+3E9C6": {
+  "members": 4,
+  "modern": "文"
+ },
+ "U+3E9CA": {
+  "members": 50,
+  "modern": "髟"
+ },
+ "U+3E9FC": {
+  "members": 2,
+  "modern": "后"
+ },
+ "U+3E9FE": {
+  "members": 2,
+  "modern": "司"
+ },
+ "U+3EA00": {
+  "members": 3,
+  "modern": "巵"
+ },
+ "U+3EA03": {
+  "members": 13,
+  "modern": "卪"
+ },
+ "U+3EA10": {
+  "members": 3,
+  "modern": "印"
+ },
+ "U+3EA13": {
+  "members": 4,
+  "modern": "色"
+ },
+ "U+3EA17": {
+  "members": 2,
+  "modern": "𠨍"
+ },
+ "U+3EA19": {
+  "members": 3,
+  "modern": "辟"
+ },
+ "U+3EA1C": {
+  "members": 18,
+  "modern": "勹"
+ },
+ "U+3EA2E": {
+  "members": 3,
+  "modern": "包"
+ },
+ "U+3EA31": {
+  "members": 3,
+  "modern": "茍"
+ },
+ "U+3EA34": {
+  "members": 26,
+  "modern": "鬼"
+ },
+ "U+3EA4E": {
+  "members": 4,
+  "modern": "甶"
+ },
+ "U+3EA52": {
+  "members": 6,
+  "modern": "厶"
+ },
+ "U+3EA58": {
+  "members": 2,
+  "modern": "嵬"
+ },
+ "U+3EA5A": {
+  "members": 71,
+  "modern": "山"
+ },
+ "U+3EAA1": {
+  "members": 2,
+  "modern": "屾"
+ },
+ "U+3EAA3": {
+  "members": 6,
+  "modern": "屵"
+ },
+ "U+3EAA9": {
+  "members": 58,
+  "modern": "广"
+ },
+ "U+3EAE3": {
+  "members": 33,
+  "modern": "厂"
+ },
+ "U+3EB04": {
+  "members": 4,
+  "modern": "𠁽"
+ },
+ "U+3EB08": {
+  "members": 2,
+  "modern": "危"
+ },
+ "U+3EB0A": {
+  "members": 68,
+  "modern": "石"
+ },
+ "U+3EB4E": {
+  "members": 7,
+  "modern": "𨱗"
+ },
+ "U+3EB55": {
+  "members": 3,
+  "modern": "勿"
+ },
+ "U+3EB58": {
+  "members": 1,
+  "modern": "冄"
+ },
+ "U+3EB59": {
+  "members": 3,
+  "modern": "而"
+ },
+ "U+3EB5C": {
+  "members": 23,
+  "modern": "豕"
+ },
+ "U+3EB73": {
+  "members": 11,
+  "modern": "㣇"
+ },
+ "U+3EB7E": {
+  "members": 5,
+  "modern": "彑"
+ },
+ "U+3EB83": {
+  "members": 3,
+  "modern": "𢄉"
+ },
+ "U+3EB86": {
+  "members": 24,
+  "modern": "豸"
+ },
+ "U+3EB9E": {
+  "members": 2,
+  "modern": "𤉡"
+ },
+ "U+3EBA0": {
+  "members": 1,
+  "modern": "易"
+ },
+ "U+3EBA1": {
+  "members": 3,
+  "modern": "象"
+ },
+ "U+3EBA4": {
+  "members": 133,
+  "modern": "馬"
+ },
+ "U+3EC29": {
+  "members": 6,
+  "modern": "𢊁"
+ },
+ "U+3EC2F": {
+  "members": 33,
+  "modern": "鹿"
+ },
+ "U+3EC50": {
+  "members": 3,
+  "modern": "麤"
+ },
+ "U+3EC53": {
+  "members": 5,
+  "modern": "㲋"
+ },
+ "U+3EC58": {
+  "members": 7,
+  "modern": "兔"
+ },
+ "U+3EC5F": {
+  "members": 1,
+  "modern": "萈"
+ },
+ "U+3EC60": {
+  "members": 94,
+  "modern": "犬"
+ },
+ "U+3ECBE": {
+  "members": 3,
+  "modern": "㹜"
+ },
+ "U+3ECC1": {
+  "members": 23,
+  "modern": "鼠"
+ },
+ "U+3ECD8": {
+  "members": 1,
+  "modern": "能"
+ },
+ "U+3ECD9": {
+  "members": 3,
+  "modern": "熋"
+ },
+ "U+3ECDC": {
+  "members": 137,
+  "modern": "火"
+ },
+ "U+3ED65": {
+  "members": 10,
+  "modern": "炎"
+ },
+ "U+3ED6F": {
+  "members": 38,
+  "modern": "𪐗"
+ },
+ "U+3ED95": {
+  "members": 4,
+  "modern": "囪"
+ },
+ "U+3ED99": {
+  "members": 3,
+  "modern": "焱"
+ },
+ "U+3ED9C": {
+  "members": 6,
+  "modern": "炙"
+ },
+ "U+3EDA2": {
+  "members": 15,
+  "modern": "𤆍"
+ },
+ "U+3EDB1": {
+  "members": 19,
+  "modern": "大"
+ },
+ "U+3EDC4": {
+  "members": 2,
+  "modern": "𡗕"
+ },
+ "U+3EDC6": {
+  "members": 6,
+  "modern": "夨"
+ },
+ "U+3EDCC": {
+  "members": 4,
+  "modern": "夭"
+ },
+ "U+3EDD0": {
+  "members": 3,
+  "modern": "交"
+ },
+ "U+3EDD3": {
+  "members": 13,
+  "modern": "𡯁"
+ },
+ "U+3EDE0": {
+  "members": 2,
+  "modern": "𡔲"
+ },
+ "U+3EDE2": {
+  "members": 2,
+  "modern": "𡕍"
+ },
+ "U+3EDE4": {
+  "members": 8,
+  "modern": "㚔"
+ },
+ "U+3EDEC": {
+  "members": 3,
+  "modern": "奢"
+ },
+ "U+3EDEF": {
+  "members": 3,
+  "modern": "亢"
+ },
+ "U+3EDF2": {
+  "members": 8,
+  "modern": "夲"
+ },
+ "U+3EDFA": {
+  "members": 5,
+  "modern": "夰"
+ },
+ "U+3EDFF": {
+  "members": 8,
+  "modern": "亣"
+ },
+ "U+3EE07": {
+  "members": 3,
+  "modern": "夫"
+ },
+ "U+3EE0A": {
+  "members": 21,
+  "modern": "𡗓"
+ },
+ "U+3EE1F": {
+  "members": 4,
+  "modern": "竝"
+ },
+ "U+3EE23": {
+  "members": 5,
+  "modern": "囟"
+ },
+ "U+3EE28": {
+  "members": 2,
+  "modern": "恖"
+ },
+ "U+3EE2A": {
+  "members": 307,
+  "modern": "心"
+ },
+ "U+3EF5C": {
+  "members": 2,
+  "modern": "惢"
+ },
+ "U+3EF5E": {
+  "members": 524,
+  "modern": "水"
+ },
+ "U+3F16A": {
+  "members": 5,
+  "modern": "沝"
+ },
+ "U+3F16F": {
+  "members": 2,
+  "modern": "𩕘"
+ },
+ "U+3F171": {
+  "members": 3,
+  "modern": "𡿨"
+ },
+ "U+3F174": {
+  "members": 2,
+  "modern": "巜"
+ },
+ "U+3F176": {
+  "members": 13,
+  "modern": "巛"
+ },
+ "U+3F183": {
+  "members": 2,
+  "modern": "泉"
+ },
+ "U+3F185": {
+  "members": 3,
+  "modern": "灥"
+ },
+ "U+3F188": {
+  "members": 2,
+  "modern": "永"
+ },
+ "U+3F18A": {
+  "members": 6,
+  "modern": "𠂢"
+ },
+ "U+3F190": {
+  "members": 10,
+  "modern": "𠔌"
+ },
+ "U+3F19A": {
+  "members": 21,
+  "modern": "仌"
+ },
+ "U+3F1AF": {
+  "members": 62,
+  "modern": "雨"
+ },
+ "U+3F1ED": {
+  "members": 6,
+  "modern": "雲"
+ },
+ "U+3F1F3": {
+  "members": 113,
+  "modern": "𤋳"
+ },
+ "U+3F264": {
+  "members": 3,
+  "modern": "𩺰"
+ },
+ "U+3F267": {
+  "members": 1,
+  "modern": "㷼"
+ },
+ "U+3F268": {
+  "members": 6,
+  "modern": "龍"
+ },
+ "U+3F26E": {
+  "members": 3,
+  "modern": "飛"
+ },
+ "U+3F271": {
+  "members": 5,
+  "modern": "非"
+ },
+ "U+3F276": {
+  "members": 2,
+  "modern": "卂"
+ },
+ "U+3F278": {
+  "members": 4,
+  "modern": "𠃉"
+ },
+ "U+3F27C": {
+  "members": 2,
+  "modern": "不"
+ },
+ "U+3F27D": {
+  "members": 7,
+  "modern": "至"
+ },
+ "U+3F284": {
+  "members": 5,
+  "modern": "㢴"
+ },
+ "U+3F289": {
+  "members": 3,
+  "modern": "鹵"
+ },
+ "U+3F28C": {
+  "members": 3,
+  "modern": "鹽"
+ },
+ "U+3F28F": {
+  "members": 11,
+  "modern": "戶"
+ },
+ "U+3F29A": {
+  "members": 70,
+  "modern": "門"
+ },
+ "U+3F2E0": {
+  "members": 39,
+  "modern": "耳"
+ },
+ "U+3F307": {
+  "members": 5,
+  "modern": "𦣝"
+ },
+ "U+3F30C": {
+  "members": 308,
+  "modern": "手"
+ },
+ "U+3F440": {
+  "members": 2,
+  "modern": "𠦬"
+ },
+ "U+3F442": {
+  "members": 265,
+  "modern": "女"
+ },
+ "U+3F54B": {
+  "members": 2,
+  "modern": "毋"
+ },
+ "U+3F54D": {
+  "members": 4,
+  "modern": "民"
+ },
+ "U+3F551": {
+  "members": 5,
+  "modern": "丿"
+ },
+ "U+3F556": {
+  "members": 2,
+  "modern": "𠂆"
+ },
+ "U+3F558": {
+  "members": 3,
+  "modern": "乁"
+ },
+ "U+3F55B": {
+  "members": 2,
+  "modern": "氏"
+ },
+ "U+3F55D": {
+  "members": 4,
+  "modern": "氐"
+ },
+ "U+3F561": {
+  "members": 27,
+  "modern": "戈"
+ },
+ "U+3F57C": {
+  "members": 2,
+  "modern": "戉"
+ },
+ "U+3F57E": {
+  "members": 4,
+  "modern": "我"
+ },
+ "U+3F582": {
+  "members": 2,
+  "modern": "亅"
+ },
+ "U+3F584": {
+  "members": 6,
+  "modern": "𤦡"
+ },
+ "U+3F58A": {
+  "members": 3,
+  "modern": "𠃊"
+ },
+ "U+3F58D": {
+  "members": 6,
+  "modern": "亾"
+ },
+ "U+3F593": {
+  "members": 7,
+  "modern": "匸"
+ },
+ "U+3F59A": {
+  "members": 25,
+  "modern": "匚"
+ },
+ "U+3F5B3": {
+  "members": 5,
+  "modern": "曲"
+ },
+ "U+3F5B8": {
+  "members": 8,
+  "modern": "𠙹"
+ },
+ "U+3F5C0": {
+  "members": 29,
+  "modern": "瓦"
+ },
+ "U+3F5DD": {
+  "members": 32,
+  "modern": "弓"
+ },
+ "U+3F5FD": {
+  "members": 5,
+  "modern": "弜"
+ },
+ "U+3F602": {
+  "members": 4,
+  "modern": "𢎺"
+ },
+ "U+3F606": {
+  "members": 7,
+  "modern": "系"
+ },
+ "U+3F60D": {
+  "members": 292,
+  "modern": "糸"
+ },
+ "U+3F731": {
+  "members": 8,
+  "modern": "𦃃"
+ },
+ "U+3F739": {
+  "members": 4,
+  "modern": "絲"
+ },
+ "U+3F73D": {
+  "members": 1,
+  "modern": "率"
+ },
+ "U+3F73E": {
+  "members": 177,
+  "modern": "虫"
+ },
+ "U+3F7EF": {
+  "members": 41,
+  "modern": "䖵"
+ },
+ "U+3F818": {
+  "members": 9,
+  "modern": "蟲"
+ },
+ "U+3F821": {
+  "members": 19,
+  "modern": "風"
+ },
+ "U+3F834": {
+  "members": 2,
+  "modern": "它"
+ },
+ "U+3F836": {
+  "members": 4,
+  "modern": "龜"
+ },
+ "U+3F83A": {
+  "members": 20,
+  "modern": "𪓑"
+ },
+ "U+3F84E": {
+  "members": 2,
+  "modern": "卵"
+ },
+ "U+3F850": {
+  "members": 9,
+  "modern": "𠄠"
+ },
+ "U+3F859": {
+  "members": 172,
+  "modern": "土"
+ },
+ "U+3F905": {
+  "members": 3,
+  "modern": "垚"
+ },
+ "U+3F908": {
+  "members": 6,
+  "modern": "𡏳"
+ },
+ "U+3F90E": {
+  "members": 4,
+  "modern": "里"
+ },
+ "U+3F912": {
+  "members": 33,
+  "modern": "田"
+ },
+ "U+3F933": {
+  "members": 3,
+  "modern": "畕"
+ },
+ "U+3F936": {
+  "members": 7,
+  "modern": "黃"
+ },
+ "U+3F93D": {
+  "members": 3,
+  "modern": "男"
+ },
+ "U+3F940": {
+  "members": 51,
+  "modern": "力"
+ },
+ "U+3F973": {
+  "members": 6,
+  "modern": "劦"
+ },
+ "U+3F979": {
+  "members": 220,
+  "modern": "金"
+ },
+ "U+3FA55": {
+  "members": 1,
+  "modern": "幵"
+ },
+ "U+3FA56": {
+  "members": 2,
+  "modern": "勺"
+ },
+ "U+3FA58": {
+  "members": 5,
+  "modern": "几"
+ },
+ "U+3FA5D": {
+  "members": 4,
+  "modern": "且"
+ },
+ "U+3FA61": {
+  "members": 18,
+  "modern": "斤"
+ },
+ "U+3FA73": {
+  "members": 17,
+  "modern": "斗"
+ },
+ "U+3FA84": {
+  "members": 8,
+  "modern": "矛"
+ },
+ "U+3FA8C": {
+  "members": 113,
+  "modern": "車"
+ },
+ "U+3FAFD": {
+  "members": 3,
+  "modern": "𠂤"
+ },
+ "U+3FB00": {
+  "members": 103,
+  "modern": "𨸏"
+ },
+ "U+3FB67": {
+  "members": 6,
+  "modern": "𨺅"
+ },
+ "U+3FB6D": {
+  "members": 3,
+  "modern": "厽"
+ },
+ "U+3FB70": {
+  "members": 3,
+  "modern": "四"
+ },
+ "U+3FB73": {
+  "members": 2,
+  "modern": "宁"
+ },
+ "U+3FB75": {
+  "members": 2,
+  "modern": "叕"
+ },
+ "U+3FB77": {
+  "members": 2,
+  "modern": "亞"
+ },
+ "U+3FB79": {
+  "members": 2,
+  "modern": "𠄡"
+ },
+ "U+3FB7B": {
+  "members": 1,
+  "modern": "六"
+ },
+ "U+3FB7C": {
+  "members": 1,
+  "modern": "𠀁"
+ },
+ "U+3FB7D": {
+  "members": 3,
+  "modern": "九"
+ },
+ "U+3FB80": {
+  "members": 11,
+  "modern": "禸"
+ },
+ "U+3FB8B": {
+  "members": 2,
+  "modern": "嘼"
+ },
+ "U+3FB8D": {
+  "members": 3,
+  "modern": "甲"
+ },
+ "U+3FB90": {
+  "members": 6,
+  "modern": "乙"
+ },
+ "U+3FB96": {
+  "members": 1,
+  "modern": "丙"
+ },
+ "U+3FB97": {
+  "members": 1,
+  "modern": "丁"
+ },
+ "U+3FB98": {
+  "members": 3,
+  "modern": "戊"
+ },
+ "U+3FB9B": {
+  "members": 4,
+  "modern": "己"
+ },
+ "U+3FB9F": {
+  "members": 2,
+  "modern": "巴"
+ },
+ "U+3FBA1": {
+  "members": 1,
+  "modern": "庚"
+ },
+ "U+3FBA2": {
+  "members": 9,
+  "modern": "辛"
+ },
+ "U+3FBAB": {
+  "members": 2,
+  "modern": "辡"
+ },
+ "U+3FBAD": {
+  "members": 1,
+  "modern": "壬"
+ },
+ "U+3FBAE": {
+  "members": 2,
+  "modern": "癸"
+ },
+ "U+3FBB0": {
+  "members": 20,
+  "modern": "子"
+ },
+ "U+3FBC4": {
+  "members": 3,
+  "modern": "了"
+ },
+ "U+3FBC7": {
+  "members": 4,
+  "modern": "孨"
+ },
+ "U+3FBCB": {
+  "members": 5,
+  "modern": "𠫓"
+ },
+ "U+3FBD0": {
+  "members": 3,
+  "modern": "丑"
+ },
+ "U+3FBD3": {
+  "members": 2,
+  "modern": "𡩟"
+ },
+ "U+3FBD5": {
+  "members": 2,
+  "modern": "戼"
+ },
+ "U+3FBD7": {
+  "members": 3,
+  "modern": "辰"
+ },
+ "U+3FBDA": {
+  "members": 2,
+  "modern": "巳"
+ },
+ "U+3FBDC": {
+  "members": 2,
+  "modern": "午"
+ },
+ "U+3FBDE": {
+  "members": 1,
+  "modern": "未"
+ },
+ "U+3FBDF": {
+  "members": 7,
+  "modern": "𦥔"
+ },
+ "U+3FBE6": {
+  "members": 84,
+  "modern": "酉"
+ },
+ "U+3FC3A": {
+  "members": 3,
+  "modern": "酋"
+ },
+ "U+3FC3D": {
+  "members": 1,
+  "modern": "戌"
+ },
+ "U+3FC3E": {
+  "members": 2,
+  "modern": "亥"
+ }
+}

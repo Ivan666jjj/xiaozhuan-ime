@@ -1,0 +1,21 @@
+# 抓取物与生成物：体积大且可重建，不入库
+fonts/raw/
+fonts/pua/
+build/
+dist/
+data/pinyin_cache.json
+compose/index.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+
+# macOS
+.DS_Store
+._*
+
+# 编辑器
+.vscode/
+.idea/
