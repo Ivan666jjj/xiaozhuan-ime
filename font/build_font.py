@@ -209,6 +209,31 @@ def erode_glyph(glyph, delta: float, tag: int = 0):
         # （「日」「山」「回」变实心黑块）。
         result = pathops.op(orig, band, pathops.PathOp.DIFFERENCE, fix_winding=True)
         result = _quads_to_cubics(result)
+        # 自检：**收缩只会让墨变少，绝不会凭空添墨**。若收缩后某处有填充、
+        # 而收缩前那里是空白，就是布尔运算留下的错误区域 —— 实测「生」右下部
+        # 凭空多出一块（面积达主体 37%），渲染出来是一团黑斑。
+        # 注意不能用 bbox 包含关系判（「日」中间那一横的 bbox 本来就落在外框内，
+        # 那样会误杀 6500 字），必须实打实地采点测试。只在轮廓数变多时做，
+        # 省下绝大部分开销。
+        cs = list(result.contours)
+        if len(cs) > before_contours:
+            bad = False
+            for c in cs:
+                bx0, by0, bx1, by1 = c.bounds
+                for i in (1, 2, 3):
+                    for j in (1, 2, 3):
+                        px = bx0 + (bx1 - bx0) * i / 4.0
+                        py = by0 + (by1 - by0) * j / 4.0
+                        if result.contains((px, py)) and not orig.contains((px, py)):
+                            bad = True
+                            break
+                    if bad:
+                        break
+                if bad:
+                    break
+            if bad:
+                ERODE_REJECTED.append(tag)
+                return glyph
         pen = TTGlyphPen(None)
         result.draw(Cu2QuPen(pen, 1.0))
         thin = pen.glyph()
@@ -286,6 +311,7 @@ def dilate_glyph(glyph, delta: float, tag: int = 0):
     if delta <= 0 or glyph.numberOfContours <= 0:
         return glyph
     try:
+        before_contours = len(glyph.endPtsOfContours)
         rec = RecordingPen()
         glyph.draw(rec, None)
         orig = pathops.Path()
@@ -300,6 +326,27 @@ def dilate_glyph(glyph, delta: float, tag: int = 0):
         # （QUAD 已在上面转过 CUBIC，所以不会再撞 CONIC 报错。）
         result = pathops.op(orig, band, pathops.PathOp.UNION, fix_winding=True)
         result = _quads_to_cubics(result)
+        # 同 erode_glyph 的反向自检：**加粗只会让墨变多**，若加粗后某处反而没墨了，
+        # 就是布尔运算出错。轮廓数变多时才查，省开销。
+        cs = list(result.contours)
+        if len(cs) > before_contours:
+            bad = False
+            for c in cs:
+                bx0, by0, bx1, by1 = c.bounds
+                for i in (1, 2, 3):
+                    for j in (1, 2, 3):
+                        px = bx0 + (bx1 - bx0) * i / 4.0
+                        py = by0 + (by1 - by0) * j / 4.0
+                        if orig.contains((px, py)) and not result.contains((px, py)):
+                            bad = True
+                            break
+                    if bad:
+                        break
+                if bad:
+                    break
+            if bad:
+                DILATE_FAILED.append(tag)
+                return glyph
         pen = TTGlyphPen(None)
         result.draw(Cu2QuPen(pen, 1.0))
         return pen.glyph()
