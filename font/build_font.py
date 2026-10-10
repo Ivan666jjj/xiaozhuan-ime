@@ -245,6 +245,17 @@ def _quads_to_cubics(src):
     return dst
 
 
+#: 手工修正的汉字 -> 小篆码位。
+#:
+#: 「上」「下」：Unicode 的 kSEAL_MCJK 把「上」指向 U+3D008，而全字库在那个码位
+#: 放的是**古文形（两横）**—— 与「二」完全撞形。《说文》字头的小篆是「丄」「丅」
+#: （一横加一竖，见段注「古文上作二，小篆作丄」），对应 U+3D006 / U+3D00F，
+#: 那两个码位全字库没收，走汉典素材。
+HANZI_SEAL_OVERRIDE: dict[str, int] = {
+    "上": 0x3D006,   # 丄
+    "下": 0x3D00F,   # 丅
+}
+
 #: 膨胀失败的码位（逐个字形容错，避免一颗老鼠屎坏一锅汤）
 DILATE_FAILED: list[int] = []
 
@@ -517,7 +528,11 @@ def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None,
                 else:
                     zdic_seal_failed.append(seal_cp)
         if made:
-            link_hanzi(ord(e.modern), seal_cp)
+            # 汉字码位指向哪个字形：默认用本码位，少数有手工修正的走修正值
+            src = HANZI_SEAL_OVERRIDE.get(e.modern, seal_cp)
+            if src not in cmap:
+                src = seal_cp
+            link_hanzi(ord(e.modern), src)
     print(f"主区：全字库 {len(ebas_seal)} + 汉典补 {len(zdic_seal_used)} "
           f"= {sum(1 for c in cmap if 0x3D000 <= c <= 0x3FC3F)} 个码位")
     if zdic_seal_failed:
