@@ -41,9 +41,12 @@ import re
 import sys
 from pathlib import Path
 
+import pathops
 from fontTools.fontBuilder import FontBuilder
 from fontTools.pens.boundsPen import BoundsPen
 from fontTools.pens.cu2quPen import Cu2QuPen
+from fontTools.pens.qu2cuPen import Qu2CuPen
+from fontTools.pens.recordingPen import RecordingPen
 from fontTools.pens.roundingPen import RoundingPen
 from fontTools.pens.transformPen import TransformPen
 from fontTools.pens.ttGlyphPen import TTGlyphPen
@@ -123,6 +126,83 @@ def svg_bounds(path: Path) -> tuple[float, float, float, float] | None:
     except Exception:
         return None
     return bp.bounds
+
+
+# ---------------------------------------------------------------- 轮廓加粗
+
+#: 汉典字形的加粗量（字体单位，em=1000）。
+#: 实测两套字源的笔画宽度差得不少：220px 字号下 p90 笔画宽 13px(全字库) vs 8px(汉典)，
+#: 折算到字体单位约差 23，所以每边外扩 ~12。不做的话混排看着「粗细不匀」。
+ZDIC_DILATE = 10.0
+
+
+def _quads_to_cubics(src):
+    """把 pathops.Path 里的 QUAD 换成 CUBIC。
+
+    skia 的 `stroke()` 给圆弧处生成二次曲线，而 pathops 自己的 `draw()` 遇到
+    QUAD 会抛 `UnsupportedVerbError: CONIC`（triplewise 那段处理不完整），
+    所以先把它们显式转成三次再做布尔/导出。
+    """
+    dst = pathops.Path()
+    pen = dst.getPen()
+    cur = None
+    for verb, pts in src:
+        n = verb.name
+        if n == "MOVE":
+            pen.moveTo(pts[0]); cur = pts[0]
+        elif n == "LINE":
+            pen.lineTo(pts[0]); cur = pts[0]
+        elif n == "CUBIC":
+            pen.curveTo(pts[0], pts[1], pts[2]); cur = pts[2]
+        elif n == "QUAD":
+            ctrl = pts[:-1] if len(pts) > 2 else [pts[0]]
+            end = pts[-1] if len(pts) > 1 else pts[0]
+            if cur is None:
+                cur = ctrl[0]
+            c, e = ctrl[-1], end
+            c1 = (cur[0] + 2 / 3 * (c[0] - cur[0]), cur[1] + 2 / 3 * (c[1] - cur[1]))
+            c2 = (e[0] + 2 / 3 * (c[0] - e[0]), e[1] + 2 / 3 * (c[1] - e[1]))
+            pen.curveTo(c1, c2, e); cur = e
+        elif n == "CLOSE":
+            pen.closePath(); cur = None
+    return dst
+
+
+#: 膨胀失败的码位（逐个字形容错，避免一颗老鼠屎坏一锅汤）
+DILATE_FAILED: list[int] = []
+
+
+def dilate_glyph(glyph, delta: float, tag: int = 0):
+    """把字形轮廓向外膨胀 `delta` 单位（笔画宽度 +2δ）。
+
+    pathops 不收 TrueType 的二次曲线（CONIC），所以先 all_cubic 转三次，
+    算完再用 Cu2QuPen 转回二次。布尔运算用 `fix_winding=False`：
+    stroke 的结果含 QUAD，走 fix_winding 会要求 even-odd 而报错；
+    TrueType 本来就是非零环绕，不修 winding 才是对的。
+
+    个别字形轮廓太碎或自交，布尔运算会抛 PathOpsError —— 这种情况**保持原样**，
+    宁可不加粗也不能把字弄坏。
+    """
+    if delta <= 0 or glyph.numberOfContours <= 0:
+        return glyph
+    try:
+        rec = RecordingPen()
+        glyph.draw(rec, None)
+        orig = pathops.Path()
+        rec.replay(Qu2CuPen(orig.getPen(), 0.5, all_cubic=True))
+        band = pathops.Path()
+        rec.replay(Qu2CuPen(band.getPen(), 0.5, all_cubic=True))
+        band.stroke(2 * delta, pathops.LineCap.ROUND_CAP,
+                    pathops.LineJoin.ROUND_JOIN, 4.0)
+        band = _quads_to_cubics(band)
+        result = pathops.op(orig, band, pathops.PathOp.UNION, fix_winding=False)
+        result = _quads_to_cubics(result)
+        pen = TTGlyphPen(None)
+        result.draw(Cu2QuPen(pen, 1.0))
+        return pen.glyph()
+    except Exception:
+        DILATE_FAILED.append(tag)
+        return glyph
 
 
 def index_svg_dir(directory: Path | None) -> dict[str, Path]:
@@ -297,7 +377,8 @@ def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None,
             return False
         name = f"u{target_cp:05X}"
         glyph_order.append(name)
-        glyphs[name] = pen.glyph()
+        # 汉典字形比全字库细一截，加粗到接近（否则混排时粗细不匀）
+        glyphs[name] = dilate_glyph(pen.glyph(), ZDIC_DILATE, tag=target_cp)
         cmap[target_cp] = name
         return True
 
@@ -403,6 +484,8 @@ def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None,
     n_hanzi = sum(1 for c in cmap if 0x4E00 <= c <= 0x9FFF)
     print(f"补区：全字库 {n_ebas_pua} + 汉典补 {n_zdic_pua} = {n_pua} 个码位")
     print(f"汉字码位（BMP，输入法上屏用）：{n_hanzi} 个（其中简体补齐 {n_simp}）")
+    if DILATE_FAILED:
+        print(f"{ZEBRA}汉典字形加粗：{len(DILATE_FAILED)} 个失败（保持原样，未加粗）")
     if zdic_pua_failed:
         print(f"{ZEBRA}（汉典 SVG 解析失败 {len(zdic_pua_failed)} 个，已跳过）")
 
