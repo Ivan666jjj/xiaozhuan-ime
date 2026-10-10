@@ -291,6 +291,29 @@ Word / WPS 打开时会读 `word/fontTable.xml` 里的 `<w:embedRegular>`，从
   （看着就不像篆书了）。生成前先扫一遍最稳
 - 不要再用 `U+3D000` 小篆码位写文档 —— 那是本项目的历史方案，超 BMP 分享不出去
 
+## Windows / 安卓：走 Rime 方案
+
+macOS 版是**原生输入法**（IMK），Windows 和安卓用不了。那两个平台走
+[Rime](https://rime.im/) —— **不用写代码，只装配置**：
+
+```bash
+./build.sh rime        # 导出方案并打包 -> dist/小篆-Rime方案.zip（14 MB）
+```
+
+zip 里含词典、方案、配置和字体，`README.md` 写明两个平台各五步：
+
+| | Windows（小狼毫） | 安卓（同文 Trime） |
+|---|---|---|
+| 候选窗字体键名 | `style/font_face` | `style/candidate_font` |
+| 字体怎么装 | 右键装到系统 | 放进 `rime/fonts/`（安卓不许随意装字体） |
+| 配置目录 | `%APPDATA%\Rime` | `/storage/emulated/0/rime` |
+
+**思路跟 macOS 版完全一致**：上屏的是普通汉字，靠**候选窗字体**把它渲染成篆形。
+装了字体就看见篆书，没装就看见楷体汉字 —— 照样读得懂、能搜索、能分享。
+
+数据由 `tools/export_rime.py` 从同一份词表生成，所以两个平台的候选字**完全一致**。
+代价是候选窗样式用 Rime 的，不能像 macOS 版那样自绘（字号、每行候选数可调那套）。
+
 ## 字形来源
 
 **① 优先来源**：[开元小篆](https://github.com/frankslin/kaiyuan-small-seal-font)

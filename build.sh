@@ -86,6 +86,17 @@ do_font() {
   echo "（若 app 里还没出现，注销重登或跑：atsutil databases -remove）"
 }
 
+do_rime() {
+  echo "==> 导出 Rime 方案（Windows 小狼毫 / 安卓同文）"
+  python3 "$ROOT/tools/export_rime.py" || return 1
+  mkdir -p "$ROOT/dist"
+  ( cd "$ROOT/packaging" && zip -qry "$ROOT/dist/小篆-Rime方案.zip" rime )
+  echo "==> $ROOT/dist/小篆-Rime方案.zip"
+  du -sh "$ROOT/dist/小篆-Rime方案.zip"
+  echo
+  echo "用法见 zip 里的 README.md（两个平台各五步）"
+}
+
 do_install() {
   do_build
   rm -rf "$DEST"
@@ -132,5 +143,6 @@ case "${1:-build}" in
   uninstall) do_uninstall ;;
   font)      do_font ;;
   package)   do_package ;;
-  *) echo "用法: $0 {build|install|uninstall|font|package}"; exit 1 ;;
+  rime)      do_rime ;;
+  *) echo "用法: $0 {build|install|uninstall|font|package|rime}"; exit 1 ;;
 esac
