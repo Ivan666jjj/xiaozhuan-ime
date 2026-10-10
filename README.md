@@ -196,6 +196,39 @@ print(eng.text_to_seal('流水说小'))         # 整段转小篆
 "
 ```
 
+## 两套篆形字体（重要）
+
+项目里并存**两套**篆形字体，各有取舍：
+
+| | `ShuowenSeal.ttf`（默认） | `EBAS-Shuowen.ttf`（全字库） |
+|---|---|---|
+| 来源 | 汉典 | **全字库说文解字**（CMEX 制作，政府开放授权） |
+| 字形数 | **12,836** | 6,745 |
+| 编码 | **U+3D000 小篆区块 + PUA 补区** | **CJK 基本区（现代汉字码位）** |
+| 授权 | 汉典整理版，**仅限个人使用** | **可商用**（需标注来源） |
+| 兼容性 | 超 BMP，办公软件里要手动设字体 | **现代汉字码位，任何软件直接显示** |
+
+**怎么选**：
+- **自己用 / 字最全** → `ShuowenSeal.ttf`（输出真正的小篆字符 `U+3Dxxx`，可编辑可再排版）
+- **要分发 / 送人 / 商用** → `EBAS-Shuowen.ttf`（字符是普通汉字，靠字体渲染出篆形）
+
+### EBAS 是怎么拿到的（官网连不上时的绕法）
+
+官网 `cns11643.gov.tw` 在部分网络下 DNS 解析不了。可行路径是
+**ZeoseVen 字体库的 webfont 端点**——它以 `cn-font-split` 把字体切成 99 个
+woff2 分片公开托管：
+
+```bash
+curl -sL "https://fontsapi.zeoseven.com/37/main/result.css"   # 含全部分片 URL
+# 下载 99 个分片后，用 fontTools 合并：
+python3 -c "
+from fontTools.merge import Merger
+Merger().merge(sorted(glob.glob('*.woff2'))).save('EBAS.ttf')"
+```
+
+**踩坑**：合并 woff2 需要 `brotli`（`python3 -m pip install brotli`）；
+`Merger.merge()` 只接受**文件路径**，不接受 `TTFont` 对象。
+
 ## 字形来源与授权
 
 字形抓自[汉典](https://www.zdic.net/)（`img.zdic.net/swxz/`，即《说文》小篆），
