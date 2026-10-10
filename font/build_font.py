@@ -39,6 +39,7 @@ import argparse
 import json
 import re
 import sys
+import xml.etree.ElementTree as xml_et
 from pathlib import Path
 
 import pathops
@@ -120,15 +121,30 @@ def is_near_white(color: str | None) -> bool:
 
 
 def glyph_paths(svg_text: str) -> list[str]:
-    """取出真正字形的 path 数据，剔除水印。"""
+    """取出真正字形的 path 数据，剔除水印。
+
+    ⚠️ 必须沿 XML 树**继承** fill 属性，不能只看 path 标签自己的 fill。
+    汉典把水印包在 ``<g fill="#fcfbfa">`` 里，里面的 path 没有自己的 fill 属性；
+    旧写法读到 ``None`` 就放行，于是水印被当成字形保留下来 —— 实测 105 个简体字
+    （楼、前、军、关、总…）的字形右下角因此带着「漢典」两个小字。
+    """
     out: list[str] = []
-    for tag in _PATH_RE.findall(svg_text):
-        fill = _FILL_RE.search(tag)
-        if is_near_white(fill.group(1) if fill else None):
-            continue
-        d = _D_RE.search(tag)
-        if d and d.group(1).strip():
-            out.append(d.group(1))
+    try:
+        root = xml_et.fromstring(svg_text)
+    except xml_et.ParseError:
+        return out
+
+    def walk(el, inherited_fill: str | None) -> None:
+        fill = el.get("fill", inherited_fill)
+        if el.tag.split("}")[-1] == "path":
+            d = el.get("d")
+            if d and d.strip() and not is_near_white(fill):
+                out.append(d)
+            return
+        for child in el:
+            walk(child, fill)
+
+    walk(root, None)
     return out
 
 
