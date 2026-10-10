@@ -89,13 +89,15 @@ final class CandidateView: NSView {
                 NSBezierPath(roundedRect: cell.insetBy(dx: 1, dy: 1), xRadius: 4, yRadius: 4).fill()
             }
 
-            // 小篆字形
+            // 主显示：用篆书字体渲染**现代汉字** —— 字体的汉字码位就是篆形，
+            // 所以这里显示出来是篆书。不再渲染 U+3D000 小篆码位：那是超 BMP，
+            // 上屏后分享到没装字体的机器上就是豆腐块。
             let glyphRect = NSRect(x: x, y: y + 16, width: cellWidth, height: cellHeight - 18)
             let para = NSMutableParagraphStyle()
             para.alignment = .center
             var attrs = attributes
             attrs[.paragraphStyle] = para
-            (cand.seal as NSString).draw(in: glyphRect, withAttributes: attrs)
+            (cand.hanzi as NSString).draw(in: glyphRect, withAttributes: attrs)
 
             // 对应现代汉字（提示用）
             var sub = idxAttributes

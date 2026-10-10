@@ -261,23 +261,70 @@ def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None,
         cmap[target_cp] = name
         return True
 
+    def link_hanzi(hanzi_cp: int, target_cp: int) -> None:
+        """让**现代汉字码位**也指向同一个篆形。
+
+        输入法上屏的是普通汉字（BMP），靠这份映射在编辑器里显示成篆形 ——
+        超 BMP 的小篆码位只有装了本机器的机器才认，分享出去就是豆腐块。
+        同一汉字只认第一个（正篆）。
+        """
+        if 0x4E00 <= hanzi_cp <= 0x9FFF and hanzi_cp not in cmap:
+            name = cmap.get(target_cp)
+            if name:
+                cmap[hanzi_cp] = name
+
+    def link_simplified() -> int:
+        """把**简体字**也指向其繁体的篆形。
+
+        篆书不分简繁，而《说文》用字是繁体 —— 用户打「边」也该出「邊」的篆形，
+        否则字体里查不到「边」，编辑器回退成普通字形，看着就不是篆书了。
+        映射取自 OpenCC 的 TSCharacters.txt（繁->简），反查成 繁->[简]。
+        """
+        path = ROOT / "data" / "TSCharacters.txt"
+        if not path.is_file():
+            return 0
+        trad2simp: dict[str, list[str]] = {}
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.startswith("#") or not line.strip():
+                continue
+            parts = line.split("\t")
+            if len(parts) < 2:
+                continue
+            trad, simps = parts[0].strip(), parts[1].strip()
+            if trad:
+                trad2simp.setdefault(trad, []).extend(simps.split())
+
+        added = 0
+        for cp in sorted(c for c in cmap if 0x4E00 <= c <= 0x9FFF):
+            name = cmap[cp]
+            for simp in trad2simp.get(chr(cp), ()):
+                scp = ord(simp)
+                if 0x4E00 <= scp <= 0x9FFF and scp not in cmap:
+                    cmap[scp] = name
+                    added += 1
+        return added
+
     # --- 主区：全字库优先，汉典补缺 ---
     zdic_seal_used: list[int] = []
     zdic_seal_failed: list[int] = []
     for e in idx.entries:
         seal_cp = ord(e.char)
+        made = False
         if seal_cp in ebas_seal:
             add_ebas(ebas_seal[seal_cp], seal_cp)
-            continue
-        svg = raw_files.get(f"{seal_cp:04X}")
-        if svg is None or svg_matrix is None:
-            continue
-        if add_svg(svg, seal_cp):
-            zdic_seal_used.append(seal_cp)
+            made = True
         else:
-            zdic_seal_failed.append(seal_cp)
+            svg = raw_files.get(f"{seal_cp:04X}")
+            if svg is not None and svg_matrix is not None:
+                if add_svg(svg, seal_cp):
+                    zdic_seal_used.append(seal_cp)
+                    made = True
+                else:
+                    zdic_seal_failed.append(seal_cp)
+        if made:
+            link_hanzi(ord(e.modern), seal_cp)
     print(f"主区：全字库 {len(ebas_seal)} + 汉典补 {len(zdic_seal_used)} "
-          f"= {len([c for c in cmap if c < 0xF0000])} 个码位")
+          f"= {sum(1 for c in cmap if 0x3D000 <= c <= 0x3FC3F)} 个码位")
     if zdic_seal_failed:
         print(f"{ZEBRA}（汉典 SVG 解析失败 {len(zdic_seal_failed)} 个，已跳过）")
 
@@ -298,6 +345,7 @@ def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None,
             continue
         if add_svg(f, pua_cp):
             zdic_pua_used.append(chr(hanzi_cp))
+            link_hanzi(hanzi_cp, pua_cp)
         else:
             zdic_pua_failed.append(chr(hanzi_cp))
 
@@ -305,11 +353,16 @@ def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None,
         if pua_cp in cmap:      # 已被占用（不该发生，保险起见）
             continue
         add_ebas(modern_cp, pua_cp)
+        link_hanzi(modern_cp, pua_cp)
+
+    n_simp = link_simplified()
 
     n_ebas_pua = len(ebas_pua)
     n_zdic_pua = len(zdic_pua_used)
-    n_pua = len([c for c in cmap if c >= 0xF0000])
+    n_pua = sum(1 for c in cmap if 0xF0000 <= c <= 0xFFFFD)
+    n_hanzi = sum(1 for c in cmap if 0x4E00 <= c <= 0x9FFF)
     print(f"补区：全字库 {n_ebas_pua} + 汉典补 {n_zdic_pua} = {n_pua} 个码位")
+    print(f"汉字码位（BMP，输入法上屏用）：{n_hanzi} 个（其中简体补齐 {n_simp}）")
     if zdic_pua_failed:
         print(f"{ZEBRA}（汉典 SVG 解析失败 {len(zdic_pua_failed)} 个，已跳过）")
 
@@ -345,8 +398,9 @@ def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None,
     fb.save(str(out))
 
     stats = {
-        "sealCodepoints": len([c for c in cmap if c < 0xF0000]),
+        "sealCodepoints": sum(1 for c in cmap if 0x3D000 <= c <= 0x3FC3F),
         "puaCodepoints": n_pua,
+        "hanziCodepoints": n_hanzi,
         "zdicSeal": len(zdic_seal_used),
         "zdicPua": n_zdic_pua,
         "glyphs": len(glyph_order) - 1,
@@ -359,10 +413,15 @@ def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None,
             "unitsPerEm": UNITS_PER_EM,
             "sealCount": stats["sealCodepoints"],
             "puaCount": stats["puaCodepoints"],
-            "seal": "".join(chr(c) for c in sorted(c for c in cmap if c < 0xF0000)),
+            "hanziCount": stats["hanziCodepoints"],
+            "seal": "".join(chr(c) for c in sorted(c for c in cmap
+                                                   if 0x3D000 <= c <= 0x3FC3F)),
             # 键是**汉字**（不是 PUA 字符）—— core/zhuan.py 按汉字查
             "pua": {chr(PUA_ORIGIN + (c - PUA_BASE)): c
-                    for c in sorted(c for c in cmap if c >= 0xF0000)},
+                    for c in sorted(c for c in cmap if 0xF0000 <= c <= 0xFFFFD)},
+            # 输入法上屏用：现代汉字码位（字体里这些码位同样是篆形）
+            "hanzi": "".join(chr(c) for c in sorted(c for c in cmap
+                                                    if 0x4E00 <= c <= 0x9FFF)),
             "zdic": {
                 "note": "以下码位的字形来自汉典，授权仅到个人使用；"
                         "要分发/商用请用 python3 font/build_font.py --no-zdic 重建",
@@ -403,6 +462,7 @@ def verify(font_path: Path, coverage_path: Path | None) -> list[str]:
         cov = json.loads(coverage_path.read_text(encoding="utf-8"))
         missing = [f"U+{ord(c):05X}" for c in cov["seal"] if ord(c) not in cmap]
         missing += [f"U+{cp:05X}" for cp in cov["pua"].values() if cp not in cmap]
+        missing += [f"U+{ord(c):04X}" for c in cov.get("hanzi", "") if ord(c) not in cmap]
         if missing:
             problems.append(f"覆盖表里 {len(missing)} 个码位在字体里没有字形：{missing[:5]}")
 
@@ -435,6 +495,7 @@ def main() -> int:
     print(f"\n合成完成：{stats['glyphs']} 个字形，cmap {stats['cmapEntries']} 项")
     print(f"  主区 {stats['sealCodepoints']} 码位（其中汉典补 {stats['zdicSeal']}）")
     print(f"  补区 {stats['puaCodepoints']} 码位（其中汉典补 {stats['zdicPua']}）")
+    print(f"  汉字码位 {stats['hanziCodepoints']} 个（BMP，输入法上屏用）")
     print(f"-> {out} ({out.stat().st_size/1024/1024:.1f} MB)")
 
     problems = verify(out, Path(args.coverage))

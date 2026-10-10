@@ -173,7 +173,9 @@ final class SealInputController: IMKInputController {
             return
         }
         let cand = candidates[selected]
-        commit(text: cand.seal, client: client)
+        // 上屏**现代汉字**（BMP）：在编辑器里把文字字体设为 Shuowen Seal 即显示篆形。
+        // 不用 U+3D000 小篆码位 —— 那是超 BMP，分享到没装字体的机器上就是豆腐块。
+        commit(text: cand.hanzi, client: client)
     }
 
     private func commit(text: String, client: IMKTextInput) {
