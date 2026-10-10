@@ -23,9 +23,16 @@ for f in "$ASSET_MAC" "$ASSET_RIME"; do
   [ -f "$f" ] || { echo "找不到分发包：$f"; echo "先跑：./build.sh publish"; exit 1; }
 done
 
-echo "==> 从钥匙串读取 GitHub token（会弹窗，请点「允许」）"
-TOKEN=$(security find-internet-password -s github.com -w)
-[ -n "$TOKEN" ] || { echo "没读到 token"; exit 1; }
+# token 来源：优先环境变量 GITHUB_TOKEN，其次系统钥匙串。
+# 环境变量那条路便于自动化，也便于「用完即弃」——不必把 token 落盘。
+if [ -n "${GITHUB_TOKEN:-}" ]; then
+  TOKEN="$GITHUB_TOKEN"
+  echo "==> 使用环境变量里的 GITHUB_TOKEN"
+else
+  echo "==> 从钥匙串读取 GitHub token（会弹窗，请点「允许」）"
+  TOKEN=$(security find-internet-password -s github.com -w)
+  [ -n "$TOKEN" ] || { echo "没读到 token"; exit 1; }
+fi
 
 CODE=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $TOKEN" \
   https://api.github.com/user)
