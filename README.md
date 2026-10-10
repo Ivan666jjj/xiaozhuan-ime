@@ -56,6 +56,17 @@ python3 tools/enable_inputmethod.py    # 补上「启用」这一步
 
 然后**关掉并重开**「系统设置」窗口（那个面板读缓存，装完不重开看不到）。
 
+## Reasonix Skill
+
+本项目已封装成 skill **`xiaozhuan-ime`**（装在 `~/.reasonix/skills/xiaozhuan-ime/`），
+把整条链路和踩坑清单固化下来，以后做类似的 macOS 输入法可直接复用：
+
+```
+skill:xiaozhuan-ime
+  SKILL.md   链路图 + 4 个致命坑 + 验收判据 + 超 BMP 陷阱
+  scripts/   fetch_all / build_font / tis_check / enable_inputmethod / acceptance
+```
+
 ## 验收结果（实机）
 
 在 **WPS Office 空白文档**中实测：
