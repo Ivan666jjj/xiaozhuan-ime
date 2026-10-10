@@ -23,6 +23,41 @@ macOS 上的小篆输入法，走两条路子：
 - **部件反查**：用部件拼键来找字，输出永远是查得到的真篆形（不做字形合成，原因见
   [`compose/README.md`](compose/README.md)）
 - **《说文》540 部检索**：按原书部序查某部所辖全部字
+- **候选窗可调**：字号、每行候选数、是否显示对照汉字，都在偏好设置里改，**即时生效**
+
+## 偏好设置
+
+输入法是后台进程（`LSUIElement`），不带 Dock 图标，所以设置从**输入法菜单**进：
+
+- **点菜单栏的输入法图标** → 「偏好设置…」；同一菜单里还有
+  「放大候选字 / 缩小候选字 / 恢复默认字号」，改完**正开着的候选窗立刻重排**，不用重启
+- 命令行也能直接开设置窗口（刚装完还没注销重登时最省事）：
+  ```bash
+  "$HOME/Library/Input Methods/小焕的小篆输入法.app/Contents/MacOS/ShuowenIME" --prefs
+  ```
+
+| 设置项 | 范围 | 默认 |
+|---|---|---|
+| 候选字号 | 20 – 120 pt | 40 |
+| 每行候选数 | 5 / 6 / 7 / 8 / 10 / 12 | 7 |
+| 候选下方显示对应汉字 | 开 / 关 | 开 |
+
+设置窗口里有**实时预览** —— 直接复用候选窗的绘制代码，看到的就是真实效果。
+
+值存在 `UserDefaults`（域 `com.local.inputmethod.ShuowenSeal`），命令行也能改：
+
+```bash
+defaults write com.local.inputmethod.ShuowenSeal candidateSize -int 64
+defaults write com.local.inputmethod.ShuowenSeal candidatePerRow -int 5
+```
+
+### 为什么不用 IMK 自带的 `showPreferences:`
+
+InputMethodKit 的常规做法是实现 `showPreferences(_:)`、让它去加载 `preferences.nib`。
+但**这个机制在新版 macOS 上不可靠** —— vChewing 的提交记录里写着
+"This turns out to be unreliable on macOS 12"，社区最后都改成自研窗口。
+加上本项目用 `swiftc` 直接编译、没有 Xcode 工程也就没有 nib，
+所以设置窗口是**纯 AppKit 代码搭的**，菜单项自己挂。
 
 ## 安装
 
@@ -117,8 +152,13 @@ font/
   ebas/EBAS-Shuowen.ttf   全字库说文解字原始字型（主字形源）
   build_font.py           全字库 TTF + 汉典 SVG → 小篆字体（U+3D000 主区 + PUA 补区）
 ime/
-  ShuowenIME/             InputMethodKit 输入法（Swift）
-  Resources/              Info.plist、seal_dict.json
+  ShuowenIME/             InputMethodKit 输入法（Swift，纯 AppKit，无 nib）
+    main.swift            入口 + CLI（--register-input-source / --prefs / --status…）
+    SealInputController   按键处理、上屏、输入法菜单
+    CandidateWindow       自绘候选窗（字号/布局全部读偏好）
+    Preferences           偏好存储（UserDefaults，改完发通知→候选窗立即重绘）
+    PreferencesWindow     偏好设置窗口（含实时预览）
+  Resources/              Info.plist、seal_dict.json、ShuowenSeal.ttf
 compose/                   **部件反查输入法**（敲「水工」出「江」）
   decompose.py            字 → 部件（偏旁归一、去笔画、独体返回空）
   build_index.py          建反查索引

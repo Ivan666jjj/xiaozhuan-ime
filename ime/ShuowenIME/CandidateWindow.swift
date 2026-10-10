@@ -17,31 +17,49 @@ final class CandidateView: NSView {
         didSet { needsDisplay = true }
     }
 
-    private let cellWidth: CGFloat = 62
-    private let cellHeight: CGFloat = 76
     private let padX: CGFloat = 8
     private let padY: CGFloat = 6
     private let hintHeight: CGFloat = 22
-    private let maxPerRow: Int = 7
 
-    private var sealFont: NSFont = .systemFont(ofSize: 40)
-    private var smallFont: NSFont = .systemFont(ofSize: 11)
-    private var hintFont: NSFont = .systemFont(ofSize: 13)
+    // ---- 以下都随偏好变化（原来是写死的 62 / 76 / 40）----
+    /// 每行几个候选
+    private var maxPerRow: Int { Pref.shared.perRow }
+    /// 候选字号
+    private var sealSize: CGFloat { Pref.shared.candidateSize }
+    /// 格子按字号等比缩放（原比例：40pt 字号 ↔ 62×76 的格子）
+    private var cellWidth: CGFloat { (sealSize * 1.55).rounded() }
+    private var cellHeight: CGFloat { (sealSize * 1.90).rounded() }
+
+    /// 小篆字体。字号变了就重建 —— NSFont 创建很轻，不必缓存。
+    private var sealFont: NSFont {
+        if let n = sealFontName, let f = NSFont(name: n, size: sealSize) { return f }
+        return .systemFont(ofSize: sealSize)
+    }
+    private var sealFontName: String?
+    private let smallFont = NSFont.systemFont(ofSize: 11)
+    private let hintFont = NSFont.systemFont(ofSize: 13)
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
         layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
         layer?.cornerRadius = 6
+        // 偏好一变就重绘：字号/布局在 draw 与 sizeFor 里重新算
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(prefDidChange),
+            name: Pref.didChange, object: nil)
+    }
+
+    @objc private func prefDidChange() {
+        needsDisplay = true
     }
 
     required init?(coder: NSCoder) { fatalError("not supported") }
 
-    /// 注册并选用自带小篆字体。
+    /// 选用自带小篆字体（字号由偏好决定，随时可变）。
     func useSealFont(named name: String) {
-        if let f = NSFont(name: name, size: 40) {
-            sealFont = f
-        } else {
+        sealFontName = name
+        if NSFont(name: name, size: sealSize) == nil {
             NSLog("[ShuowenIME] 找不到字体 \(name)，候选将显示为占位方块")
         }
     }
@@ -92,24 +110,25 @@ final class CandidateView: NSView {
             // 主显示：用篆书字体渲染**现代汉字** —— 字体的汉字码位就是篆形，
             // 所以这里显示出来是篆书。不再渲染 U+3D000 小篆码位：那是超 BMP，
             // 上屏后分享到没装字体的机器上就是豆腐块。
-            let glyphRect = NSRect(x: x, y: y + 16, width: cellWidth, height: cellHeight - 18)
+            let glyphRect = NSRect(x: x, y: y + cellHeight * 0.21,
+                                   width: cellWidth, height: cellHeight * 0.76)
             let para = NSMutableParagraphStyle()
             para.alignment = .center
             var attrs = attributes
             attrs[.paragraphStyle] = para
             (cand.hanzi as NSString).draw(in: glyphRect, withAttributes: attrs)
 
-            // 对应现代汉字（提示用）
-            var sub = idxAttributes
-            sub[.paragraphStyle] = para
-            var subAttrs = sub
-            subAttrs[.foregroundColor] = NSColor.secondaryLabelColor
-            (cand.hanzi as NSString).draw(
-                in: NSRect(x: x, y: y + 15, width: cellWidth, height: 14),
-                withAttributes: subAttrs)
+            // 对应现代汉字（提示用，可在偏好里关掉）
+            if Pref.shared.showHanzi {
+                var subAttrs = idxAttributes
+                subAttrs[.paragraphStyle] = para
+                subAttrs[.foregroundColor] = NSColor.secondaryLabelColor
+                (cand.hanzi as NSString).draw(
+                    in: NSRect(x: x, y: y + cellHeight * 0.20, width: cellWidth, height: 14),
+                    withAttributes: subAttrs)
+            }
 
             // 序号
-            attrs[.paragraphStyle] = para
             var numAttrs = idxAttributes
             numAttrs[.paragraphStyle] = para
             ("\(i + 1)" as NSString).draw(

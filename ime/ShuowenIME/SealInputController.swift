@@ -17,6 +17,8 @@ final class SealInputController: IMKInputController {
     private var candidates: [SealCandidate] = []
     private var selected = 0
     private var panel: CandidatePanel?
+    /// 最近一次使用的输入客户端：字号/布局改了要按新尺寸重排候选窗，得记住它。
+    private var lastClient: IMKTextInput?
 
     private let maxCandidates = 28
 
@@ -161,6 +163,7 @@ final class SealInputController: IMKInputController {
 
     private func showPanel(client: IMKTextInput, hint: String) {
         guard let panel = panel else { return }
+        lastClient = client          // 字号变了要按新尺寸重排，得记住当前的 client
         // 取当前光标的行高矩形，用来定位候选窗
         var lineRect = NSRect.zero
         client.attributes(forCharacterIndex: 0, lineHeightRectangle: &lineRect)
@@ -195,5 +198,65 @@ final class SealInputController: IMKInputController {
             commit(text: buffer, client: client)
         }
         super.commitComposition(sender)
+    }
+
+    // ------------------------------------------------------------ 输入法菜单
+
+    /// 输入法菜单（点菜单栏的输入法图标时出现）。
+    ///
+    /// 不用 IMK 自带的 `showPreferences(_:)`：它默认去找 `preferences.nib`，
+    /// 而本项目没有 nib（swiftc 直接编译），且该机制在新版 macOS 上被证实不可靠
+    /// （见 PreferencesWindow.swift 的注释）。所以菜单项自己挂、窗口自己弹。
+    override func menu() -> NSMenu! {
+        let menu = NSMenu(title: "小篆输入法")
+
+        let prefs = NSMenuItem(title: "偏好设置…",
+                               action: #selector(openPreferences(_:)), keyEquivalent: "")
+        prefs.target = self
+        menu.addItem(prefs)
+
+        menu.addItem(.separator())
+
+        let bigger = NSMenuItem(title: "放大候选字",
+                                action: #selector(makeFontBigger(_:)), keyEquivalent: "")
+        bigger.target = self
+        menu.addItem(bigger)
+
+        let smaller = NSMenuItem(title: "缩小候选字",
+                                 action: #selector(makeFontSmaller(_:)), keyEquivalent: "")
+        smaller.target = self
+        menu.addItem(smaller)
+
+        let reset = NSMenuItem(title: "恢复默认字号（\(Int(Pref.sizeDefault)) pt）",
+                               action: #selector(resetFontSize(_:)), keyEquivalent: "")
+        reset.target = self
+        menu.addItem(reset)
+
+        return menu
+    }
+
+    @objc private func openPreferences(_ sender: Any?) {
+        PrefWindowController.shared.show()
+    }
+
+    @objc private func makeFontBigger(_ sender: Any?) {
+        Pref.shared.candidateSize += 6
+        reformatOpenPanel()
+    }
+
+    @objc private func makeFontSmaller(_ sender: Any?) {
+        Pref.shared.candidateSize -= 6
+        reformatOpenPanel()
+    }
+
+    @objc private func resetFontSize(_ sender: Any?) {
+        Pref.shared.candidateSize = Pref.sizeDefault
+        reformatOpenPanel()
+    }
+
+    /// 字号变了，让正开着的候选窗按新尺寸重排（没开就不用管，下次显示自然是新的）。
+    private func reformatOpenPanel() {
+        guard let client = lastClient, !candidates.isEmpty else { return }
+        showPanel(client: client, hint: "\(buffer)  —  数字/空格选字，回车提交拼音")
     }
 }

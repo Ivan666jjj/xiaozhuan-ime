@@ -68,6 +68,17 @@ if let first = CommandLine.arguments.dropFirst().first,
     runInstallerAction(first)
 }
 
+// 单独打开偏好设置窗口（也可以从输入法菜单进）。
+// 刚装完、还没注销重登、切不到输入法时，用它最省事：
+//   "…/小焕的小篆输入法.app/Contents/MacOS/ShuowenIME" --prefs
+if CommandLine.arguments.dropFirst().first == "--prefs" {
+    let app = NSApplication.shared
+    app.setActivationPolicy(.accessory)   // 不出现在 Dock
+    PrefWindowController.shared.show()
+    app.run()
+    exit(EXIT_SUCCESS)
+}
+
 let app = NSApplication.shared
 let delegate = AppDelegate()
 app.delegate = delegate
