@@ -23,3 +23,6 @@ __pycache__/
 # 编辑器
 .vscode/
 .idea/
+
+# 旧版分发包：已废弃（含汉典字形、且是超 BMP 方案），不再入库
+releases/

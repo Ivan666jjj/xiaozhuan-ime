@@ -78,8 +78,18 @@ InputMethodKit 的常规做法是实现 `showPreferences(_:)`、让它去加载 
 
 ## 安装
 
-**下载即用**：[`releases/xiaohuan-xiaozhuan-ime-macOS-v1.0.0.zip`](releases/xiaohuan-xiaozhuan-ime-macOS-v1.0.0.zip)
+**下载即用**：到 **[Releases 页面](https://github.com/Ivan666jjj/xiaozhuan-ime/releases/latest)** 下载：
+
+| 平台 | 下载哪个 | 装法 |
+|---|---|---|
+| **macOS** | `xiaozhuan-ime-macOS-v1.0.0.zip` | 解压 → `./install.sh` → **注销重登一次** |
+| **Windows / 安卓** | `xiaozhuan-ime-Rime-v1.0.0.zip` | 按包内 `README.md`，小狼毫 / 同文各五步 |
+
 解压后运行 `./install.sh`。
+
+> 仓库里**不放分发包**（体积大，而且容易被误当成最新版），一律走 Releases。
+> 自己打最新的：`./build.sh publish` —— 它会先用不含汉典的合规字体重建，
+> 再打 macOS + Rime 两个包。
 
 `install.sh` 会自动做三件事：装输入法、装字体、**把输入法加进系统启用列表**
 （等同于点 `+` 添加）。最后一步很关键——只把 `.app` 拷进
