@@ -71,8 +71,8 @@ do_package() {
   cp -R "$BUILD/$BUNDLE" "$STAGE/"
   cp "$ROOT/build/$FONT" "$STAGE/"
   cp "$ROOT/packaging/install.sh" "$STAGE/"
+  cp "$ROOT/packaging/使用说明.md" "$STAGE/使用说明.md"
   cp "$ROOT/tools/enable_inputmethod.py" "$STAGE/"
-  cp "$ROOT/README.md" "$STAGE/使用说明.md" 2>/dev/null || true
   chmod +x "$STAGE/install.sh"
   ( cd "$DIST" && zip -qry "小焕的小篆输入法-macOS.zip" "小焕的小篆输入法" )
   echo "==> 分发包：$DIST/小焕的小篆输入法-macOS.zip"
