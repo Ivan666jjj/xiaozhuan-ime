@@ -38,6 +38,12 @@ unzip 小焕的小篆输入法-macOS.zip && cd 小焕的小篆输入法 && ./ins
 
 装完到 **系统设置 → 键盘 → 文字输入 → 输入法 → 编辑**，添加「小焕的小篆输入法」。
 
+## 发布到 GitHub
+
+```bash
+./tools/publish_release.sh   # 创建 Release 并上传分发包（需读钥匙串里的 token，会弹窗）
+```
+
 ## 验收
 
 ```bash
