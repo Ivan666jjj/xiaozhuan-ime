@@ -64,6 +64,12 @@ UNITS_PER_EM = 1000
 CONTENT_RATIO = 0.80
 QUANTILE_LO, QUANTILE_HI = 0.01, 0.99
 
+#: 汉典字形的「大小收敛」强度（0 = 不收敛、1 = 完全拉齐）。
+#: 汉典素材的离散度是全字库的 3 倍（p5~p95 相差 34% vs 11%），混排会忽大忽小；
+#: 但不做完全拉齐 —— 强行把每个字都撑到同一尺寸会破坏笔画结构（试过，密的字会糊）。
+#: 取 0.65 是把偏离压掉 65%，保留三成自然差异。
+SVG_SIZE_CONVERGE = 0.65
+
 PUA_BASE = 0xF0000
 PUA_ORIGIN = 0x3400
 
@@ -382,16 +388,23 @@ def compute_ebas_matrix(glyf, cmap: dict[int, str], codes: list[int]):
 
 
 def compute_svg_matrix(raw_files: dict[str, Path], pua_files: dict[str, Path]):
-    """按抽样 SVG 的内容框定缩放，使汉典字形与全字库视觉大小一致。"""
+    """按抽样 SVG 的内容框定缩放，使汉典字形与全字库整体尺度一致。
+
+    返回 (矩阵, 高度中位数)。中位数用来做**逐字温和收敛** ——
+    汉典素材的字形大小离散度是全字库的 3 倍（p5~p95 相差 34% vs 11%），
+    混排时会「忽大忽小」。
+    """
     files = sorted(raw_files.values()) + sorted(pua_files.values())
     if not files:
-        return None
+        return None, None
     step = max(1, len(files) // 800)
     boxes = [b for b in (svg_bounds(f) for f in files[::step]) if b]
     frame = _quantile_frame(boxes)
+    heights = sorted(b[3] - b[1] for b in boxes)
+    median_h = heights[len(heights) // 2]
     print(f"{ZEBRA}汉典 SVG 内容框 x[{frame[0]:.0f},{frame[2]:.0f}] "
-          f"y[{frame[1]:.0f},{frame[3]:.0f}]（抽样 {len(boxes)}）")
-    return _fit(frame, flip_y=True)
+          f"y[{frame[1]:.0f},{frame[3]:.0f}]（抽样 {len(boxes)}，高度中位 {median_h:.0f}）")
+    return _fit(frame, flip_y=True), median_h
 
 
 # ------------------------------------------------------------ 主流程
@@ -422,7 +435,8 @@ def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None,
     print(f"汉典素材：主区 {len(raw_files)} 个 SVG，补区 {len(pua_files)} 个 SVG")
 
     ebas_matrix = compute_ebas_matrix(eb_glyf, eb_cmap, codes)
-    svg_matrix = compute_svg_matrix(raw_files, pua_files) if raw_files else None
+    svg_matrix, svg_median_h = (compute_svg_matrix(raw_files, pua_files)
+                                 if raw_files else (None, None))
 
     glyph_order: list[str] = [".notdef"]
     glyphs = {".notdef": TTGlyphPen(None).glyph()}
@@ -447,10 +461,27 @@ def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None,
         if not paths:
             return False
         pen = TTGlyphPen(None)
-        # 同 add_ebas：走**全局**矩阵，不做逐字形归一化。
-        # 汉典素材同样规整（高度中位 82% viewBox，p25~p75 只差 1 单位），
-        # 它和全字库之间那 7 个百分点的整体尺度差，由各自的全局矩阵一次性对齐。
+        # 全局矩阵（对齐两套源的整体尺度）+ 逐字**温和收敛**：
+        # 汉典素材内部的大小离散度是全字库的 3 倍（p5~p95 相差 34% vs 11%），
+        # 不压一下混排会忽大忽小；但只压 65%，保留自然差异，避免把字撑变形。
         tpen = TransformPen(Cu2QuPen(RoundingPen(pen), max_err=1.0), svg_matrix)
+        if svg_median_h:
+            bp = BoundsPen(None)
+            for d in paths:
+                try:
+                    svg_parser.parse_path(d, bp)
+                except Exception:
+                    continue
+            if bp.bounds:
+                h = bp.bounds[3] - bp.bounds[1]
+                if h > 0:
+                    f = (h / svg_median_h) ** (-SVG_SIZE_CONVERGE)
+                    if abs(f - 1.0) > 0.01:
+                        cx = (bp.bounds[0] + bp.bounds[2]) / 2.0
+                        cy = (bp.bounds[1] + bp.bounds[3]) / 2.0
+                        # 在 SVG 坐标里、以该字自己的 bbox 中心为基准缩放
+                        tpen = TransformPen(
+                            tpen, (f, 0.0, 0.0, f, cx * (1 - f), cy * (1 - f)))
         drew = 0
         for d in paths:
             try:
