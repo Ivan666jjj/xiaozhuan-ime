@@ -59,7 +59,9 @@ sys.path.insert(0, str(ROOT))
 from core.seal_index import SealDataError, SealIndex  # noqa: E402
 
 UNITS_PER_EM = 1000
-CONTENT_RATIO = 0.88
+#: 字面占 em 的比例（四周留白）。0.80 是照「第一版」的观感定的 ——
+#: 那版字形小、留白多、显清秀；0.88 会把字撑得偏满。
+CONTENT_RATIO = 0.80
 QUANTILE_LO, QUANTILE_HI = 0.01, 0.99
 
 PUA_BASE = 0xF0000
@@ -128,12 +130,87 @@ def svg_bounds(path: Path) -> tuple[float, float, float, float] | None:
     return bp.bounds
 
 
-# ---------------------------------------------------------------- 轮廓加粗
+# ---------------------------------------------------------------- 笔画粗细
 
-#: 汉典字形的加粗量（字体单位，em=1000）。
-#: 实测两套字源的笔画宽度差得不少：220px 字号下 p90 笔画宽 13px(全字库) vs 8px(汉典)，
-#: 折算到字体单位约差 23，所以每边外扩 ~12。不做的话混排看着「粗细不匀」。
-ZDIC_DILATE = 10.0
+#: 全字库字形的**收细**量（字体单位，em=1000）。
+#: 全字库的笔画天生比汉典粗不少（220px 字号下 p90 宽 12px vs 8px），
+#: 既然要的是「整体细」的观感，就把粗的那边收细，而不是把细的那边加粗。
+EBAS_ERODE = 9.0
+
+#: 汉典字形的加粗量。既然整体收细，这里保持原始（0 = 不加粗）——
+#: 汉典原始笔画本来就在目标粗细上。
+ZDIC_DILATE = 0.0
+
+#: 收缩被拒/失败的码位（细笔画断开或布尔运算失败时保持原样）
+ERODE_REJECTED: list[int] = []
+DILATE_FAILED: list[int] = []
+
+
+def _ink(glyph) -> float:
+    """字形墨量的粗略代理：各轮廓的包围盒面积之和。
+
+    ⚠️ 这个代理**很粗** —— 细长笔画（一条竖）的 bbox 面积远大于真实墨量，
+    收缩后必然骤降，拿它当判据会大面积误杀（实测误判 2580/9416）。
+    现在只作日志参考，不再用于拒绝判断。
+    """
+    if glyph.numberOfContours <= 0:
+        return 0.0
+    coords = glyph.coordinates
+    starts = [0] + [e + 1 for e in glyph.endPtsOfContours[:-1]]
+    total = 0.0
+    for start, end in zip(starts, glyph.endPtsOfContours):
+        seg = coords[start:end + 1]
+        if not seg:
+            continue
+        xs = [p[0] for p in seg]
+        ys = [p[1] for p in seg]
+        total += (max(xs) - min(xs)) * (max(ys) - min(ys))
+    return total
+
+
+def erode_glyph(glyph, delta: float, tag: int = 0):
+    """把字形轮廓**向内**收缩 delta 单位（笔画宽度 -2δ）。
+
+    原理同 dilate_glyph，只是最后一步用 DIFFERENCE 把「沿轮廓的带子」挖掉，
+    剩下的就是细了一圈的字形。
+
+    拒绝判据只有一条：**轮廓数暴增**（断开必然让一个轮廓变两个）。
+    阈值给得很宽（×2+4），因为收缩把原本粘连的笔画分开是**好事**、不算失败 ——
+    真正要防的是「一根笔画中间断掉」，那在字形轮廓上表现为极端的分裂。
+    宁可有几个该拒的没拒（人工抽查能看出来），也不要大面积误杀。
+    """
+    if delta <= 0 or glyph.numberOfContours <= 0:
+        return glyph
+    try:
+        before_contours = len(glyph.endPtsOfContours)
+
+        rec = RecordingPen()
+        glyph.draw(rec, None)
+        orig = pathops.Path()
+        rec.replay(Qu2CuPen(orig.getPen(), 0.5, all_cubic=True))
+        band = pathops.Path()
+        rec.replay(Qu2CuPen(band.getPen(), 0.5, all_cubic=True))
+        band.stroke(2 * delta, pathops.LineCap.ROUND_CAP,
+                    pathops.LineJoin.ROUND_JOIN, 4.0)
+        band = _quads_to_cubics(band)
+        # 同 dilate_glyph：必须 fix_winding=True，否则字腔会被填实
+        # （「日」「山」「回」变实心黑块）。
+        result = pathops.op(orig, band, pathops.PathOp.DIFFERENCE, fix_winding=True)
+        result = _quads_to_cubics(result)
+        pen = TTGlyphPen(None)
+        result.draw(Cu2QuPen(pen, 1.0))
+        thin = pen.glyph()
+
+        if thin.numberOfContours <= 0:
+            ERODE_REJECTED.append(tag)
+            return glyph
+        if len(thin.endPtsOfContours) > before_contours * 2 + 4:
+            ERODE_REJECTED.append(tag)      # 轮廓数暴增 = 笔画被切断了
+            return glyph
+        return thin
+    except Exception:
+        ERODE_REJECTED.append(tag)
+        return glyph
 
 
 def _quads_to_cubics(src):
@@ -195,7 +272,10 @@ def dilate_glyph(glyph, delta: float, tag: int = 0):
         band.stroke(2 * delta, pathops.LineCap.ROUND_CAP,
                     pathops.LineJoin.ROUND_JOIN, 4.0)
         band = _quads_to_cubics(band)
-        result = pathops.op(orig, band, pathops.PathOp.UNION, fix_winding=False)
+        # fix_winding=True：布尔运算后必须重算轮廓绕向，否则内轮廓（字腔）会被填实
+        # —— 表现是「日」「国」「回」这类带框的字变成实心黑块。
+        # （QUAD 已在上面转过 CUBIC，所以不会再撞 CONIC 报错。）
+        result = pathops.op(orig, band, pathops.PathOp.UNION, fix_winding=True)
         result = _quads_to_cubics(result)
         pen = TTGlyphPen(None)
         result.draw(Cu2QuPen(pen, 1.0))
@@ -347,7 +427,8 @@ def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None,
         eb_glyf[eb_cmap[modern_cp]].draw(
             TransformPen(RoundingPen(pen), ebas_matrix), eb_glyf)
         glyph_order.append(name)
-        glyphs[name] = pen.glyph()
+        # 全字库的笔画天生偏粗，按用户要求整体收细（断笔的字自动退回原样）
+        glyphs[name] = erode_glyph(pen.glyph(), EBAS_ERODE, tag=target_cp)
         cmap[target_cp] = name
 
     def add_svg(svg_file: Path, target_cp: int) -> bool:
@@ -477,6 +558,8 @@ def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None,
     n_hanzi = sum(1 for c in cmap if 0x4E00 <= c <= 0x9FFF)
     print(f"补区：全字库 {n_ebas_pua} + 汉典补 {n_zdic_pua} = {n_pua} 个码位")
     print(f"汉字码位（BMP，输入法上屏用）：{n_hanzi} 个（其中简体补齐 {n_simp}）")
+    if ERODE_REJECTED:
+        print(f"{ZEBRA}全字库字形收细：{len(ERODE_REJECTED)} 个保持原样（细笔画会断）")
     if DILATE_FAILED:
         print(f"{ZEBRA}汉典字形加粗：{len(DILATE_FAILED)} 个失败（保持原样，未加粗）")
     if zdic_pua_failed:
