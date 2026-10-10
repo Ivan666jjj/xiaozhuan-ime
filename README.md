@@ -103,13 +103,17 @@ core/                     转换内核（纯 Python，可独立使用）
   freq.py                 字频代理（pypinyin 词组词典统计）
   zhuan.py                统一入口：拼音/汉字 → 小篆
 tools/
-  fetch_all.py            （已废弃）当初抓汉典 SVG 用，不再参与构建
+  fetch_all.py            汉典 SVG 抓取（仅当 fonts/ 素材缺失时才需要重跑）
   export_dict.py          导出 ime/Resources/seal_dict.json
+  export_compose_index.py 重建 compose 部件反查索引
   check.py                工程自检
   acceptance.py           端到端验收测试
+fonts/                    汉典抓来的 SVG 素材（补缺来源，不入库）
+  raw/*.svg               主区：按小篆码位命名
+  pua/*.svg               补区：按 PUA 码位命名
 font/
-  ebas/EBAS-Shuowen.ttf   全字库说文解字原始字型（字形源）
-  build_font.py           全字库 TTF → 小篆字体（U+3D000 主区 + PUA 补区）
+  ebas/EBAS-Shuowen.ttf   全字库说文解字原始字型（主字形源）
+  build_font.py           全字库 TTF + 汉典 SVG → 小篆字体（U+3D000 主区 + PUA 补区）
 ime/
   ShuowenIME/             InputMethodKit 输入法（Swift）
   Resources/              Info.plist、seal_dict.json
@@ -131,9 +135,10 @@ build.sh                  构建 / 安装 / 卸载
 **1. Unicode 小篆区块并不完整。** Unicode 18.0 的 `kSEAL_MCJK` 有约 2,918 条把篆形
 对应成了**扩展区古字**（例如「二」记作「𠄞」、「五」记作「𢀑」），导致「七」「二」
 「五」「小」「之」这类常用字查不到码位。实测 5,195 个常用字里只有 2,211 个有
-Unicode 码位 —— 加上补区后，最终能打出 3,589 个（69%）。
+Unicode 码位 —— 加上补区后，最终能打出 3,984 个（77%）。
 
-> 解决：**补区**。这类字改用全字库的篆形，用确定性公式编码到 PUA 私有区：
+> 解决：**补区**。这类字改从字源取篆形（全字库优先，没收的用汉典），
+> 用确定性公式编码到 PUA 私有区：
 > `PUA = 0xF0000 + (汉字码位 - 0x3400)`（可逆，不需要额外映射表）。
 > 代价：**补区字符离开本字体不可移植**——复制到没装该字体的机器会显示成方块。
 
@@ -155,11 +160,15 @@ Unicode 码位 —— 加上补区后，最终能打出 3,589 个（69%）。
 ## 用法
 
 ```bash
-# 1. 合成字体（从 font/ebas/EBAS-Shuowen.ttf 重编码，约 10 秒）
+# 1. 合成字体（全字库重编码 + 汉典 SVG 补缺，约 15 秒）
 python3 font/build_font.py
 
-# 2. 导出拼音词典
+# 1b. 要分发/商用？换纯全字库版重建（不含汉典字形）
+# python3 font/build_font.py --no-zdic
+
+# 2. 导出拼音词典（改动过字形源就要重跑）
 python3 tools/export_dict.py
+python3 tools/export_compose_index.py   # 部件反查索引（可选）
 
 # 3. 构建 + 安装（同时把字体装到 ~/Library/Fonts/）
 ./build.sh install
@@ -203,25 +212,39 @@ print(eng.text_to_seal('流水说小'))         # 整段转小篆
 
 ## 字形来源
 
-只认一套字形：**台湾「全字库说文解字」**（CMEX 制作，依《政府资料开放授权条款
-第 1 版》释出，个人与企业均可免费使用）。原始字型在
-`font/ebas/EBAS-Shuowen.ttf`，收 6,738 个汉字，字形编码在 **CJK 基本区**
-（现代汉字码位）。
+**主来源**：台湾「全字库说文解字」（CMEX 制作，依《政府资料开放授权条款第 1 版》
+释出，**个人与企业均可免费使用**）——`font/ebas/EBAS-Shuowen.ttf`，收 6,738 个汉字，
+字形编码在 CJK 基本区（现代汉字码位）。
 
-构建时由 `font/build_font.py` 把它**重编码**成输入法上屏要用的那套码位：
+**补缺来源**：汉典《说文》小篆字形（`fonts/raw/` + `fonts/pua/`，共 8,799 个 SVG），
+**只用来补全字库没收的字**。授权仅到「个人使用」。
 
-| | 原始 EBAS | 构建产物 `ShuowenSeal.ttf` |
+`font/build_font.py` 把两套字源一起**重编码**成输入法上屏用的那套码位：
+
+| | 码位数 | 说明 |
 |---|---|---|
-| 字形数 | 6,738 | 6,738 |
-| 编码 | CJK 基本区（现代汉字码位） | **U+3D000 小篆区块** + **PUA-A 补区** |
-| 用途 | 给人当字体用 | 给输入法上屏用（真小篆字符，可编辑可再排版） |
+| **主区** | **7,234** | `U+3D000..U+3FC3F`，来自 Unicode 18.0 的 `kSEAL_MCJK` 对应表 |
+| └ 全字库 | 5,817 | |
+| └ 汉典补 | 1,417 | 全字库没收、但汉典有的字 |
+| **补区** | **2,182** | PUA-A：`U+F0000 + 汉字码位 - 0x3400` |
+| └ 全字库 | 964 | Unicode 小篆区块漏收的《说文》字（「七」「小」「自」…） |
+| └ 汉典补 | 1,218 | |
 
-- **主区** 5,817 个码位：`U+3D000..U+3FC3F`，来自 Unicode 18.0 的 `kSEAL_MCJK` 对应表
-- **补区** 964 个码位：Unicode 小篆区块漏收的《说文》字（「七」「小」「自」「玉」…），
-  编码到 `U+F0000 + 汉字码位 - 0x3400`
+合计 **9,416 个篆字**。常用字表（5,195 字）能打出 **3,984 个（76.7%）**——
+比纯全字库版（69.1%）高 7.6 个百分点，也比纯汉典版（75.9%）还高 42 字
+（因为全字库有 617 个字是汉典反而没有的）。
+
+### 要分发 / 商用？用纯全字库版
+
+```bash
+python3 font/build_font.py --no-zdic     # 只用全字库，产出可自由分发的版本
+```
+
+`data/glyph_coverage.json` 的 `zdic` 字段记录了哪些码位来自汉典，据此可判断
+当前产物能不能对外分发。
 
 产物 `data/glyph_coverage.json` 是「哪些字真的打得出来」的唯一权威，
-`core/zhuan.py` 按它过滤 —— Unicode 有码位但全字库没收的字不会进候选，
+`core/zhuan.py` 按它过滤 —— 没有字形的码位不会进候选，
 不会出现「打了字却是豆腐块」。
 
 ### 原始字型是怎么拿到的
@@ -251,9 +274,13 @@ Merger().merge(sorted(glob.glob('*.woff2'))).save('EBAS.ttf')"
 
 ## 授权
 
-字形来自**台湾「全字库说文解字」TrueType 字型**（CMEX 制作），依
+**主字形**来自台湾「全字库说文解字」TrueType 字型（CMEX 制作），依
 **《政府资料开放授权条款 - 第 1 版》** 释出 —— 个人与企业均可免费使用，
 使用时保留来源标注即可。
+
+**补缺字形**来自[汉典](https://www.zdic.net/)（`img.zdic.net/swxz/`），
+**授权仅到「个人使用」**。自用无妨；若要分发/商用，用
+`python3 font/build_font.py --no-zdic` 重建纯全字库版。
 
 码位映射参考 Unicode 18.0
 [`SealSources.txt`](https://www.unicode.org/Public/18.0.0/ucd/SealSources.txt)。

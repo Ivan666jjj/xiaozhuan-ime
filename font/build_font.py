@@ -1,46 +1,53 @@
 #!/usr/bin/env python3
-"""从「全字库说文解字」字型合成小篆字体。
+"""合成小篆字体：全字库说文解字为主，汉典 SVG 补缺。
 
-输入
-----
-``font/ebas/EBAS-Shuowen.ttf``
-    台湾「全字库说文解字」TrueType 字型（CMEX 制作，2004）。
-    收字 6,738 个汉字，字形编码在 CJK 基本区（现代汉字码位，非超 BMP）。
-    授权：政府资料开放授权条款第 1 版，个人与企业均可免费使用。
+字形来源
+--------
+``font/ebas/EBAS-Shuowen.ttf``  —— **主来源**
+    台湾「全字库说文解字」TrueType 字型（CMEX 制作），6,738 个汉字。
+    授权：政府资料开放授权条款第 1 版，**个人与企业均可免费使用**。
 
-``data/SealSources.txt``
-    Unicode 18.0 小篆区块的 ``kSEAL_MCJK`` 对应表（小篆码位 ↔ 现代汉字）。
+``fonts/raw/*.svg`` ``fonts/pua/*.svg``  —— **补缺来源（可选）**
+    汉典《说文》小篆字形（`img.zdic.net/swxz/`），8,799 个。
+    仅覆盖全字库没收的字。**授权仅到「个人使用」**，分发/商用请加 ``--no-zdic``。
+
+编码目标
+--------
+**主区**  Unicode 18.0 小篆区块 ``U+3D000..U+3FC3F``
+**补区**  PUA-A（``U+F0000 + 汉字码位 - 0x3400``），收 Unicode 无码位的《说文》字
 
 输出
 ----
-``build/ShuowenSeal.ttf``
-    **主区**  Unicode 18.0 小篆区块 ``U+3D000..U+3FC3F``
-    **补区**  PUA-A（``U+F0000 + 汉字码位 - 0x3400``），收 Unicode 无码位的《说文》字
-
-``data/glyph_coverage.json``
-    字形覆盖表，供 ``core/zhuan.py`` 判断某字到底打不打得出。
+``build/ShuowenSeal.ttf``      主区 + 补区的小篆字体
+``data/glyph_coverage.json``   字形覆盖表（哪些字真打得出来），供 ``core/zhuan.py`` 过滤
 
 关键实现说明
 ------------
-EBAS 的 ``hmtx.lsb`` 与 ``glyf.xMin`` 存在大量不一致（实测「巡」差 3604、
-「咄」差 682，「臦」「訌」等共 33 字），而 ``TTFont.getGlyphSet()`` 拿到的字形
-在 ``draw()`` 时会把 lsb 当水平偏移用，使这些字整体错位。因此本脚本一律用
-``glyf[gn].draw(pen, glyf)`` 取轮廓（offset 默认 0，即真实轮廓坐标），
-重建时再令 ``hmtx.lsb == 新字形 xMin``，与新字形自洽。
+1. **EBAS 的 hmtx.lsb 与 glyf.xMin 有大量不一致**（实测 33 字：「巡」差 3604、
+   「咄」差 682 …）。``TTFont.getGlyphSet()`` 拿到的字形在 ``draw()`` 时会把差值
+   当水平偏移用，FreeType 也照此渲染 —— 表现为这批字整体右移。因此一律用
+   ``glyf[gn].draw(pen, glyf)`` 取轮廓（offset 默认 0，即真实轮廓坐标），
+   重建时再令 ``hmtx.lsb == 新字形 xMin``。
+2. 两套来源各按自己的 1%~99% 分位内容框归一化到同一个目标框，视觉大小才一致。
+3. 汉典 SVG 是 y 轴向下、viewBox 400×400，需镜像 y；其边角有近白色水印路径，
+   按 fill 颜色剔除。
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
 from fontTools.fontBuilder import FontBuilder
 from fontTools.pens.boundsPen import BoundsPen
+from fontTools.pens.cu2quPen import Cu2QuPen
 from fontTools.pens.roundingPen import RoundingPen
 from fontTools.pens.transformPen import TransformPen
 from fontTools.pens.ttGlyphPen import TTGlyphPen
+from fontTools.svgLib.path import parser as svg_parser
 from fontTools.ttLib import TTFont
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -48,137 +55,273 @@ sys.path.insert(0, str(ROOT))
 
 from core.seal_index import SealDataError, SealIndex  # noqa: E402
 
-#: 目标 em 大小
 UNITS_PER_EM = 1000
-#: 字面占 em 的比例（四周留白各 6%）
 CONTENT_RATIO = 0.88
-#: 用 1%~99% 分位确定内容框，避免个别超宽字形把整体压小
 QUANTILE_LO, QUANTILE_HI = 0.01, 0.99
 
-#: 补区 PUA 公式（与 core/zhuan.py、tools/fetch_all.py 保持一致）
 PUA_BASE = 0xF0000
 PUA_ORIGIN = 0x3400
 
 FAMILY = "Shuowen Seal"
 
+ZEBRA = "  "
 
-def source_codes(eb_cmap: dict[int, str]) -> list[int]:
-    """EBAS 里真正的汉字码位（跳过 ASCII/控制字符）。"""
-    return sorted(cp for cp in eb_cmap if 0x4E00 <= cp <= 0x9FFF)
+_PATH_RE = re.compile(r"<path\b[^>]*>", re.I)
+_D_RE = re.compile(r'\bd="([^"]*)"')
+_FILL_RE = re.compile(r'\bfill="([^"]*)"')
 
 
-def compute_matrix(glyf, eb_cmap: dict[int, str], codes: list[int]) -> tuple[float, ...]:
-    """按内容框分位数求 SVG->字体 的仿射矩阵 (a,b,c,d,e,f)。
+# ---------------------------------------------------------------- SVG 工具
 
-    EBAS 坐标已是 y 轴向上，因此无需翻转，只做等比缩放 + 居中平移。
-    """
-    xs0: list[int] = []
-    ys0: list[int] = []
-    xs1: list[int] = []
-    ys1: list[int] = []
+def is_near_white(color: str | None) -> bool:
+    """判断 fill 颜色是否接近白色（汉典水印用色）。"""
+    if not color:
+        return False
+    c = color.strip().lower()
+    if c in ("none", "transparent"):
+        return False
+    if c.startswith("#"):
+        h = c[1:]
+        if len(h) == 3:
+            h = "".join(ch * 2 for ch in h)
+        if len(h) < 6:
+            return False
+        try:
+            r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+        except ValueError:
+            return False
+        return r > 0xE0 and g > 0xE0 and b > 0xE0
+    m = re.match(r"rgba?\(([^)]*)\)", c)
+    if m:
+        parts = [p.strip() for p in m.group(1).replace("%", "").split(",")]
+        try:
+            vals = [float(p) for p in parts[:3]]
+        except ValueError:
+            return False
+        return all(v > 224 for v in vals)
+    return False
 
+
+def glyph_paths(svg_text: str) -> list[str]:
+    """取出真正字形的 path 数据，剔除水印。"""
+    out: list[str] = []
+    for tag in _PATH_RE.findall(svg_text):
+        fill = _FILL_RE.search(tag)
+        if is_near_white(fill.group(1) if fill else None):
+            continue
+        d = _D_RE.search(tag)
+        if d and d.group(1).strip():
+            out.append(d.group(1))
+    return out
+
+
+def svg_bounds(path: Path) -> tuple[float, float, float, float] | None:
+    bp = BoundsPen(None)
+    try:
+        for d in glyph_paths(path.read_text(encoding="utf-8")):
+            svg_parser.parse_path(d, bp)
+    except Exception:
+        return None
+    return bp.bounds
+
+
+def index_svg_dir(directory: Path | None) -> dict[str, Path]:
+    """把 SVG 目录索成 {码位字符串: 路径}，只收体积正常的文件。"""
+    out: dict[str, Path] = {}
+    if not directory or not directory.is_dir():
+        return out
+    for f in directory.glob("*.svg"):
+        if f.stat().st_size > 100:
+            out[f.stem.upper()] = f
+    return out
+
+
+# ------------------------------------------------------------ 坐标映射
+
+def _quantile_frame(boxes: list[tuple[float, float, float, float]]):
+    """由一批包围盒求 1%~99% 分位内容框。"""
+    if not boxes:
+        raise SealDataError("没量到任何字形边界")
+    xs0 = sorted(b[0] for b in boxes)
+    ys0 = sorted(b[1] for b in boxes)
+    xs1 = sorted(b[2] for b in boxes)
+    ys1 = sorted(b[3] for b in boxes)
+    pick = lambda v, p: float(v[min(len(v) - 1, int(len(v) * p))])
+    return (pick(xs0, QUANTILE_LO), pick(ys0, QUANTILE_LO),
+            pick(xs1, QUANTILE_HI), pick(ys1, QUANTILE_HI))
+
+
+def _fit(frame, flip_y: bool) -> tuple[float, ...]:
+    """内容框 -> 目标框 [60,940] 的仿射矩阵。"""
+    cx0, cy0, cx1, cy1 = frame
+    span_w, span_h = cx1 - cx0, cy1 - cy0
+    target = UNITS_PER_EM * CONTENT_RATIO
+    s = target / max(span_w, span_h)
+    ox = (UNITS_PER_EM - span_w * s) / 2.0 - cx0 * s
+    if flip_y:
+        # SVG y 轴向下：先把下边界送到目标框底部
+        oy = (UNITS_PER_EM - span_h * s) / 2.0 + cy1 * s
+        return (s, 0.0, 0.0, -s, ox, oy)
+    oy = (UNITS_PER_EM - span_h * s) / 2.0 - cy0 * s
+    return (s, 0.0, 0.0, s, ox, oy)
+
+
+def compute_ebas_matrix(glyf, cmap: dict[int, str], codes: list[int]):
+    boxes = []
     for cp in codes:
         bp = BoundsPen(None)
         try:
-            glyf[eb_cmap[cp]].draw(bp, glyf)
+            glyf[cmap[cp]].draw(bp, glyf)
         except Exception:
             continue
-        if bp.bounds is None:
-            continue
-        x0, y0, x1, y1 = bp.bounds
-        xs0.append(x0)
-        ys0.append(y0)
-        xs1.append(x1)
-        ys1.append(y1)
-
-    if not xs0:
-        raise SealDataError("EBAS 里没量到任何字形边界，字体文件可能损坏")
-
-    def q(values: list[int], p: float) -> float:
-        ordered = sorted(values)
-        return float(ordered[min(len(ordered) - 1, int(len(ordered) * p))])
-
-    cx0, cx1 = q(xs0, QUANTILE_LO), q(xs1, QUANTILE_HI)
-    cy0, cy1 = q(ys0, QUANTILE_LO), q(ys1, QUANTILE_HI)
-
-    span_w, span_h = cx1 - cx0, cy1 - cy0
-    target = UNITS_PER_EM * CONTENT_RATIO
-    scale = target / max(span_w, span_h)
-    ox = (UNITS_PER_EM - span_w * scale) / 2.0 - cx0 * scale
-    oy = (UNITS_PER_EM - span_h * scale) / 2.0 - cy0 * scale
-
-    print(f"  内容框 x[{cx0:.0f},{cx1:.0f}] y[{cy0:.0f},{cy1:.0f}] "
-          f"({span_w:.0f}×{span_h:.0f})  缩放 {scale:.4f}")
-    return (scale, 0.0, 0.0, scale, ox, oy)
+        if bp.bounds:
+            boxes.append(bp.bounds)
+    frame = _quantile_frame(boxes)
+    print(f"{ZEBRA}全字库内容框 x[{frame[0]:.0f},{frame[2]:.0f}] "
+          f"y[{frame[1]:.0f},{frame[3]:.0f}]")
+    return _fit(frame, flip_y=False)
 
 
-def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None) -> dict[str, int]:
+def compute_svg_matrix(raw_files: dict[str, Path], pua_files: dict[str, Path]):
+    """按抽样 SVG 的内容框定缩放，使汉典字形与全字库视觉大小一致。"""
+    files = sorted(raw_files.values()) + sorted(pua_files.values())
+    if not files:
+        return None
+    step = max(1, len(files) // 800)
+    boxes = [b for b in (svg_bounds(f) for f in files[::step]) if b]
+    frame = _quantile_frame(boxes)
+    print(f"{ZEBRA}汉典 SVG 内容框 x[{frame[0]:.0f},{frame[2]:.0f}] "
+          f"y[{frame[1]:.0f},{frame[3]:.0f}]（抽样 {len(boxes)}）")
+    return _fit(frame, flip_y=True)
+
+
+# ------------------------------------------------------------ 主流程
+
+def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None,
+          zdic_raw: Path | None, zdic_pua: Path | None) -> dict[str, int]:
     eb = TTFont(str(ebas), fontNumber=0)
     eb_glyf = eb["glyf"]
     eb_cmap = eb.getBestCmap()
     if not eb_cmap:
         raise SealDataError(f"{ebas} 没有可用的 cmap")
-
-    codes = source_codes(eb_cmap)
-    print(f"EBAS 汉字：{len(codes)} 个")
+    codes = sorted(cp for cp in eb_cmap if 0x4E00 <= cp <= 0x9FFF)
+    print(f"全字库汉字：{len(codes)} 个")
 
     idx = SealIndex(data)
     print(f"Unicode 小篆条目：{len(idx.entries)} 个")
 
-    # ---- 主区：Seal 码位 -> EBAS 汉字 -----------------------------
-    seal_map: dict[int, int] = {}
-    for e in idx.entries:
-        modern = ord(e.modern)
-        if modern in eb_cmap:
-            seal_map[ord(e.char)] = modern
-    print(f"主区可编码：{len(seal_map)} 个 Seal 码位（字形去重后 "
-          f"{len(set(seal_map.values()))} 个）")
+    # --- 全字库能编的码位 ---
+    ebas_seal = {ord(e.char): ord(e.modern)
+                 for e in idx.entries if ord(e.modern) in eb_cmap}
+    ebas_covered = set(ebas_seal.values())
+    ebas_pua = {cp: PUA_BASE + (cp - PUA_ORIGIN)
+                for cp in codes if cp not in ebas_covered}
 
-    # ---- 补区：EBAS 有字形、但主区未覆盖的汉字 ---------------------
-    covered = set(seal_map.values())
-    pua_map = {
-        cp: PUA_BASE + (cp - PUA_ORIGIN)
-        for cp in codes
-        if cp not in covered
-    }
-    print(f"补区可编码：{len(pua_map)} 个汉字")
+    # --- 汉典素材 ---
+    raw_files = index_svg_dir(zdic_raw)
+    pua_files = index_svg_dir(zdic_pua)
+    print(f"汉典素材：主区 {len(raw_files)} 个 SVG，补区 {len(pua_files)} 个 SVG")
 
-    matrix = compute_matrix(eb_glyf, eb_cmap, codes)
+    ebas_matrix = compute_ebas_matrix(eb_glyf, eb_cmap, codes)
+    svg_matrix = compute_svg_matrix(raw_files, pua_files) if raw_files else None
 
-    # ---- 提取并重编码字形 ----------------------------------------
     glyph_order: list[str] = [".notdef"]
     glyphs = {".notdef": TTGlyphPen(None).glyph()}
     cmap: dict[int, str] = {}
-    cache: dict[int, str] = {}  # EBAS 汉字码位 -> 新字形名
 
-    def glyph_for(modern_cp: int) -> str:
-        """取 EBAS 字形、变换后登记为新字形；同一汉字只做一次。"""
-        name = cache.get(modern_cp)
-        if name is not None:
-            return name
+    def add_ebas(modern_cp: int, target_cp: int) -> None:
+        name = f"u{target_cp:05X}"
         pen = TTGlyphPen(None)
-        # 顺序要留意：先变换再取整，保证落盘坐标是整数
-        eb_glyf[eb_cmap[modern_cp]].draw(TransformPen(RoundingPen(pen), matrix), eb_glyf)
-        name = f"uni{modern_cp:04X}"
+        # 先变换再取整，保证落盘坐标是整数
+        eb_glyf[eb_cmap[modern_cp]].draw(
+            TransformPen(RoundingPen(pen), ebas_matrix), eb_glyf)
         glyph_order.append(name)
         glyphs[name] = pen.glyph()
-        cache[modern_cp] = name
-        return name
+        cmap[target_cp] = name
 
-    for seal_cp in sorted(seal_map):
-        cmap[seal_cp] = glyph_for(seal_map[seal_cp])
-    for modern_cp in sorted(pua_map):
-        cmap[pua_map[modern_cp]] = glyph_for(modern_cp)
+    def add_svg(svg_file: Path, target_cp: int) -> bool:
+        paths = glyph_paths(svg_file.read_text(encoding="utf-8"))
+        if not paths:
+            return False
+        pen = TTGlyphPen(None)
+        # SVG 用三次贝塞尔，TrueType 只收二次：变换 -> 降阶 -> 取整
+        tpen = TransformPen(Cu2QuPen(RoundingPen(pen), max_err=1.0), svg_matrix)
+        drew = 0
+        for d in paths:
+            try:
+                svg_parser.parse_path(d, tpen)
+                drew += 1
+            except Exception:
+                continue
+        if not drew:
+            return False
+        name = f"u{target_cp:05X}"
+        glyph_order.append(name)
+        glyphs[name] = pen.glyph()
+        cmap[target_cp] = name
+        return True
+
+    # --- 主区：全字库优先，汉典补缺 ---
+    zdic_seal_used: list[int] = []
+    zdic_seal_failed: list[int] = []
+    for e in idx.entries:
+        seal_cp = ord(e.char)
+        if seal_cp in ebas_seal:
+            add_ebas(ebas_seal[seal_cp], seal_cp)
+            continue
+        svg = raw_files.get(f"{seal_cp:04X}")
+        if svg is None or svg_matrix is None:
+            continue
+        if add_svg(svg, seal_cp):
+            zdic_seal_used.append(seal_cp)
+        else:
+            zdic_seal_failed.append(seal_cp)
+    print(f"主区：全字库 {len(ebas_seal)} + 汉典补 {len(zdic_seal_used)} "
+          f"= {len([c for c in cmap if c < 0xF0000])} 个码位")
+    if zdic_seal_failed:
+        print(f"{ZEBRA}（汉典 SVG 解析失败 {len(zdic_seal_failed)} 个，已跳过）")
+
+    # --- 补区：全字库能编的汉字 + 汉典有字形的汉字 ---
+    zdic_pua_used: list[str] = []
+    zdic_pua_failed: list[str] = []
+    for f in sorted(pua_files.values()):
+        try:
+            pua_cp = int(f.stem, 16)
+        except ValueError:
+            continue
+        hanzi_cp = PUA_ORIGIN + (pua_cp - PUA_BASE)
+        if not (0x3400 <= hanzi_cp <= 0x9FFF):
+            continue
+        if hanzi_cp in ebas_covered or hanzi_cp in ebas_pua:
+            continue   # 全字库有字形，走上面那批
+        if pua_cp in cmap:
+            continue
+        if add_svg(f, pua_cp):
+            zdic_pua_used.append(chr(hanzi_cp))
+        else:
+            zdic_pua_failed.append(chr(hanzi_cp))
+
+    for modern_cp, pua_cp in sorted(ebas_pua.items()):
+        if pua_cp in cmap:      # 已被占用（不该发生，保险起见）
+            continue
+        add_ebas(modern_cp, pua_cp)
+
+    n_ebas_pua = len(ebas_pua)
+    n_zdic_pua = len(zdic_pua_used)
+    n_pua = len([c for c in cmap if c >= 0xF0000])
+    print(f"补区：全字库 {n_ebas_pua} + 汉典补 {n_zdic_pua} = {n_pua} 个码位")
+    if zdic_pua_failed:
+        print(f"{ZEBRA}（汉典 SVG 解析失败 {len(zdic_pua_failed)} 个，已跳过）")
 
     if len(glyph_order) <= 1:
         raise SealDataError("没有合成出任何字形")
 
-    # ---- 组装字体 -------------------------------------------------
+    # --- 组装字体 ---
     fb = FontBuilder(UNITS_PER_EM, isTTF=True)
     fb.setupGlyphOrder(glyph_order)
     fb.setupCharacterMap(cmap)
-    fb.setupGlyf(glyphs)  # 顺带算好 xMin/yMin
-    metrics = {name: (UNITS_PER_EM, getattr(glyphs[name], "xMin", 0)) for name in glyph_order}
+    fb.setupGlyf(glyphs)          # 顺带算好 xMin/yMin
+    metrics = {n: (UNITS_PER_EM, getattr(glyphs[n], "xMin", 0)) for n in glyph_order}
     fb.setupHorizontalMetrics(metrics)
     fb.setupHorizontalHeader(ascent=880, descent=-120)
     fb.setupNameTable({
@@ -186,14 +329,14 @@ def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None) -> dict[
         "styleName": "Regular",
         "fullName": f"{FAMILY} Regular",
         "psName": "ShuowenSeal-Regular",
-        "version": "1.0",
-        "uniqueFontIdentifier": "ShuowenSeal-Regular-1.0",
-        "manufacturer": "Glyphs from QuanZiKu Shuowen Jiezi (CMEX)",
+        "version": "2.0",
+        "uniqueFontIdentifier": "ShuowenSeal-Regular-2.0",
+        "manufacturer": "QuanZiKu Shuowen Jiezi (CMEX) + zdic.net",
         "description": (
             "Small Seal script font encoded in the Unicode 18.0 Seal block "
-            "(U+3D000..U+3FC3F) plus a PUA-A fallback range. "
-            "Glyph outlines from the QuanZiKu Shuowen Jiezi TrueType font, "
-            "released under the Taiwan Government Open Data License v1."
+            "(U+3D000..U+3FC3F) plus a PUA-A fallback range. Primary glyphs from "
+            "the QuanZiKu Shuowen Jiezi font (Taiwan Government Open Data License v1); "
+            "remaining glyphs from zdic.net (personal use only)."
         ),
     })
     fb.setupOS2(sTypoAscender=880, sTypoDescender=-120, usWinAscent=880, usWinDescent=120)
@@ -202,28 +345,38 @@ def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None) -> dict[
     fb.save(str(out))
 
     stats = {
-        "sealCodepoints": len(seal_map),
-        "puaCodepoints": len(pua_map),
+        "sealCodepoints": len([c for c in cmap if c < 0xF0000]),
+        "puaCodepoints": n_pua,
+        "zdicSeal": len(zdic_seal_used),
+        "zdicPua": n_zdic_pua,
         "glyphs": len(glyph_order) - 1,
         "cmapEntries": len(cmap),
     }
 
     if coverage_out is not None:
         payload = {
-            "source": "全字库说文解字（EBAS / CMEX）",
+            "source": "全字库说文解字（EBAS / CMEX）+ 汉典补缺",
             "unitsPerEm": UNITS_PER_EM,
-            "sealCount": len(seal_map),
-            "puaCount": len(pua_map),
-            "seal": "".join(chr(cp) for cp in sorted(seal_map)),
-            "pua": {chr(cp): pua_map[cp] for cp in sorted(pua_map)},
+            "sealCount": stats["sealCodepoints"],
+            "puaCount": stats["puaCodepoints"],
+            "seal": "".join(chr(c) for c in sorted(c for c in cmap if c < 0xF0000)),
+            # 键是**汉字**（不是 PUA 字符）—— core/zhuan.py 按汉字查
+            "pua": {chr(PUA_ORIGIN + (c - PUA_BASE)): c
+                    for c in sorted(c for c in cmap if c >= 0xF0000)},
+            "zdic": {
+                "note": "以下码位的字形来自汉典，授权仅到个人使用；"
+                        "要分发/商用请用 python3 font/build_font.py --no-zdic 重建",
+                "sealCount": stats["zdicSeal"],
+                "puaCount": stats["zdicPua"],
+                "seal": "".join(chr(c) for c in sorted(zdic_seal_used)),
+                "pua": sorted(zdic_pua_used),
+            },
         }
         coverage_out.parent.mkdir(parents=True, exist_ok=True)
         coverage_out.write_text(
             json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
-            encoding="utf-8",
-        )
-        print(f"字形覆盖表 -> {coverage_out} "
-              f"({coverage_out.stat().st_size / 1024:.0f} KB)")
+            encoding="utf-8")
+        print(f"字形覆盖表 -> {coverage_out} ({coverage_out.stat().st_size/1024:.0f} KB)")
 
     return stats
 
@@ -257,12 +410,17 @@ def verify(font_path: Path, coverage_path: Path | None) -> list[str]:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="合成《说文》小篆字体（全字库版）")
+    ap = argparse.ArgumentParser(description="合成《说文》小篆字体")
     ap.add_argument("--ebas", default=str(ROOT / "font" / "ebas" / "EBAS-Shuowen.ttf"))
     ap.add_argument("--data", default=str(ROOT / "data" / "SealSources.txt"))
     ap.add_argument("--out", default=str(ROOT / "build" / "ShuowenSeal.ttf"))
-    ap.add_argument("--coverage",
-                    default=str(ROOT / "data" / "glyph_coverage.json"))
+    ap.add_argument("--coverage", default=str(ROOT / "data" / "glyph_coverage.json"))
+    ap.add_argument("--zdic-raw", default=str(ROOT / "fonts" / "raw"),
+                    help="汉典主区 SVG 目录（补缺用）")
+    ap.add_argument("--zdic-pua", default=str(ROOT / "fonts" / "pua"),
+                    help="汉典补区 SVG 目录（补缺用）")
+    ap.add_argument("--no-zdic", action="store_true",
+                    help="只用全字库，产出可自由分发/商用的版本")
     args = ap.parse_args()
 
     ebas, out = Path(args.ebas), Path(args.out)
@@ -270,11 +428,14 @@ def main() -> int:
         print(f"找不到字形源：{ebas}", file=sys.stderr)
         return 1
 
-    stats = build(ebas, Path(args.data), out, Path(args.coverage))
+    zdic_raw = None if args.no_zdic else Path(args.zdic_raw)
+    zdic_pua = None if args.no_zdic else Path(args.zdic_pua)
+
+    stats = build(ebas, Path(args.data), out, Path(args.coverage), zdic_raw, zdic_pua)
     print(f"\n合成完成：{stats['glyphs']} 个字形，cmap {stats['cmapEntries']} 项")
-    print(f"  主区 {stats['sealCodepoints']} 个 Seal 码位，补区 {stats['puaCodepoints']} 个")
-    size = out.stat().st_size / 1024 / 1024
-    print(f"-> {out} ({size:.1f} MB)")
+    print(f"  主区 {stats['sealCodepoints']} 码位（其中汉典补 {stats['zdicSeal']}）")
+    print(f"  补区 {stats['puaCodepoints']} 码位（其中汉典补 {stats['zdicPua']}）")
+    print(f"-> {out} ({out.stat().st_size/1024/1024:.1f} MB)")
 
     problems = verify(out, Path(args.coverage))
     if problems:
