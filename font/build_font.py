@@ -704,6 +704,41 @@ def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None,
                     added += 1
         return added
 
+    def link_variants() -> int:
+        """把**现代通行字**指向其古字（异体字/古今字）的篆形。
+
+        跟 link_simplified 是同一类问题、同一套解法，只是那管简繁、这管古今：
+
+          「他」不在《说文》字头里 —— 人部作「佗」；
+          「仙」《说文》作「僊」；「坑」作「阬」；「蝶」作「蜨」……
+
+        现代人打的是通行字形，字体里查不到就静默回退成楷体，看着不像篆书。
+        映射表在 data/variant_map.txt，**每一条都人工过过**（详见该文件的头注）。
+
+        ⚠️ 切忌直接用 Unihan 的 kSemanticVariant 全表 —— 那张表本意是「字形统一
+        参考」，把「只是同音」的字也标了进来（你→祢、孰→塾、孀→霜），照单全收
+        会打出**错的篆形**，而用户不会知道，比缺字更糟。
+        """
+        path = ROOT / "data" / "variant_map.txt"
+        if not path.is_file():
+            return 0
+        added = 0
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.startswith("#") or not line.strip():
+                continue
+            parts = line.split("\t")
+            if len(parts) < 2:
+                continue
+            modern, ancient = parts[0].strip(), parts[1].strip()
+            if len(modern) != 1 or len(ancient) != 1:
+                continue
+            mcp, acp = ord(modern), ord(ancient)
+            # 古字得真有篆形才谈得上「指向」；现代字要是本来就有，别覆盖
+            if acp in cmap and 0x4E00 <= mcp <= 0x9FFF and mcp not in cmap:
+                cmap[mcp] = cmap[acp]
+                added += 1
+        return added
+
     # --- 主区：开源小篆优先，全字库次之，汉典补缺 ---
     zdic_seal_used: list[int] = []
     zdic_seal_failed: list[int] = []
@@ -774,13 +809,15 @@ def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None,
             link_hanzi(modern_cp, pua_cp)
 
     n_simp = link_simplified()
+    n_var = link_variants()
 
     n_ebas_pua = len(ebas_pua)
     n_zdic_pua = len(zdic_pua_used)
     n_pua = sum(1 for c in cmap if 0xF0000 <= c <= 0xFFFFD)
     n_hanzi = sum(1 for c in cmap if 0x4E00 <= c <= 0x9FFF)
     print(f"补区：全字库 {n_ebas_pua} + 汉典补 {n_zdic_pua} = {n_pua} 个码位")
-    print(f"汉字码位（BMP，输入法上屏用）：{n_hanzi} 个（其中简体补齐 {n_simp}）")
+    print(f"汉字码位（BMP，输入法上屏用）：{n_hanzi} 个"
+          f"（其中简体补齐 {n_simp}、古今/异体补齐 {n_var}）")
     if ERODE_REJECTED:
         if ERODE_DOWNGRADED:
             by_delta: dict[float, int] = {}
