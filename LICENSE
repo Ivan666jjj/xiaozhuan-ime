@@ -19,15 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----------------------------------------------------------------------------
-注意：MIT 许可仅适用于本项目的**代码**（Swift 输入法、Python 工具与构建脚本）。
-
-字形（篆形）不适用 MIT —— 它们来自三个第三方来源，各自另有授权，
-详见 `THIRD_PARTY_NOTICES.md` 与 `packaging/字形来源与授权.md`。
-发布分发包时必须一并带上这两份声明（OFL 与 OGDL 均要求署名）。
-
-注意：本项目的**默认构建**（`python3 font/build_font.py`）会用到汉典
-（zdic.net）的补缺字形，而那部分**授权仅到「个人使用」**。
-**对外分发必须改用** `python3 font/build_font.py --no-zdic` 重建，
-这样产物不含汉典字形，可以自由分发。
