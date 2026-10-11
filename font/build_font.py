@@ -44,6 +44,7 @@ from pathlib import Path
 
 import pathops
 from fontTools.fontBuilder import FontBuilder
+from fontTools.pens.areaPen import AreaPen
 from fontTools.pens.boundsPen import BoundsPen
 from fontTools.pens.cu2quPen import Cu2QuPen
 from fontTools.pens.qu2cuPen import Qu2CuPen
@@ -165,13 +166,28 @@ def svg_bounds(path: Path) -> tuple[float, float, float, float] | None:
 #: 既然要的是「整体细」的观感，就把粗的那边收细，而不是把细的那边加粗。
 EBAS_ERODE = 9.0
 
-#: 汉典字形的加粗量。既然整体收细，这里保持原始（0 = 不加粗）——
-#: 汉典原始笔画本来就在目标粗细上。
-ZDIC_DILATE = 0.0
+#: 汉典字形的加粗量。
+#:
+#: ⚠️ 这里原来是 0（旧注释写着「汉典原始笔画本来就在目标粗细上」）—— 但那是
+#: **引入开源小篆之前**的判断，当时汉典只是给全字库补缺、两者本来接近。
+#: 现在主源换成开源小篆，实测（平均笔画宽度 2A/P，字体单位 em=1000）：
+#:
+#:     汉典补（1218 个现代字）   中位 33.6   p10 31.9   p90 36.5
+#:     开元小篆 + 全字库         中位 45.2   p10 33.9   p90 54.3
+#:
+#: 汉典那组细了 **25.8%**，而这些偏偏是「以 其 前 原 善 太 备 敢 散 替 朋 由 退」
+#: 这类日常用字，混排时一眼就能看出不协调（朋友实测反馈：「可以把粗细统一下」）。
+#:
+#: dilate_glyph(delta) 让笔画宽 +2δ，所以 δ = (45.2 − 33.6) / 2 ≈ 5.8。
+#: 汉典那组分布很窄（31.9~36.5），整体加粗一次就能对齐，不必逐字调。
+ZDIC_DILATE = 5.8
 
 #: 收缩被拒/失败的码位（细笔画断开或布尔运算失败时保持原样）
 ERODE_REJECTED: list[int] = []
 DILATE_FAILED: list[int] = []
+
+#: 收细时**自动降档**的记录：tag -> 实际用到的 delta（与 DILATE_DOWNGRADED 对称）
+ERODE_DOWNGRADED: dict[int, float] = {}
 
 
 def _ink(glyph) -> float:
@@ -196,74 +212,95 @@ def _ink(glyph) -> float:
     return total
 
 
+def _path_area(p) -> float:
+    """pathops.Path 的面积绝对值。
+
+    用途：布尔运算后做「墨量单调性」检查 —— 收缩只能让墨变少、膨胀只能让墨变多，
+    一旦反过来，就是运算在某些区域凭空添墨/丢墨（渲染出来是黑块或空洞）。
+    这个检查很便宜，所以**每次都做**，不像采点那样要挑时机。
+    """
+    ap = AreaPen(None)
+    p.draw(ap)
+    return abs(ap.value)
+
+
+def _erode_ladder(target: float) -> list[float]:
+    """收细档位：从目标值起每 1.0 降一档，最低 1.0。
+
+    与 `_dilate_ladder` 对称 —— 收细过头同样会让布尔运算产生黑块/断笔。
+    """
+    out: list[float] = []
+    d = target
+    while d >= 1.0 - 1e-9:
+        out.append(round(d, 1))
+        d -= 1.0
+    if not out:
+        out = [max(round(target, 2), 0.1)]
+    return out
+
+
+def _erode_once(glyph, delta: float, tag: int):
+    """按 delta 尝试收细**一次**。成功返回新字形，失败返回 None（不记状态）。"""
+    before_contours = len(glyph.endPtsOfContours)
+    rec = RecordingPen()
+    glyph.draw(rec, None)
+    orig = pathops.Path()
+    rec.replay(Qu2CuPen(orig.getPen(), 0.5, all_cubic=True))
+    band = pathops.Path()
+    rec.replay(Qu2CuPen(band.getPen(), 0.5, all_cubic=True))
+    band.stroke(2 * delta, pathops.LineCap.ROUND_CAP,
+                pathops.LineJoin.ROUND_JOIN, 4.0)
+    band = _quads_to_cubics(band)
+    # 必须 fix_winding=True，否则字腔会被填实（「日」「山」「回」变实心黑块）
+    result = pathops.op(orig, band, pathops.PathOp.DIFFERENCE, fix_winding=True)
+    result = _quads_to_cubics(result)
+    # 自检一：墨量单调性 —— 收缩只会让墨变少
+    if _path_area(result) > _path_area(orig) + 1e-6:
+        return None
+    # 自检二：实打实采点（轮廓数有变化时）
+    # 不能用 bbox 包含关系判（「日」中间那一横的 bbox 本来就落在外框内，
+    # 那样会误杀 6500 字），必须测「收缩后有墨、收缩前这里是空白」。
+    cs = list(result.contours)
+    if len(cs) != before_contours:
+        for c in cs:
+            bx0, by0, bx1, by1 = c.bounds
+            for i in range(1, 5):
+                for j in range(1, 5):
+                    px = bx0 + (bx1 - bx0) * i / 5.0
+                    py = by0 + (by1 - by0) * j / 5.0
+                    if result.contains((px, py)) and not orig.contains((px, py)):
+                        return None
+    pen = TTGlyphPen(None)
+    result.draw(Cu2QuPen(pen, 1.0))
+    thin = pen.glyph()
+    if thin.numberOfContours <= 0:
+        return None
+    if len(thin.endPtsOfContours) > before_contours * 2 + 4:
+        return None                     # 轮廓数暴增 = 笔画被切断了
+    return thin
+
+
 def erode_glyph(glyph, delta: float, tag: int = 0):
     """把字形轮廓**向内**收缩 delta 单位（笔画宽度 -2δ）。
 
-    原理同 dilate_glyph，只是最后一步用 DIFFERENCE 把「沿轮廓的带子」挖掉，
-    剩下的就是细了一圈的字形。
-
-    拒绝判据只有一条：**轮廓数暴增**（断开必然让一个轮廓变两个）。
-    阈值给得很宽（×2+4），因为收缩把原本粘连的笔画分开是**好事**、不算失败 ——
-    真正要防的是「一根笔画中间断掉」，那在字形轮廓上表现为极端的分裂。
-    宁可有几个该拒的没拒（人工抽查能看出来），也不要大面积误杀。
+    ★ **自动降档重试**（与 dilate_glyph 对称）：收细过头会让布尔运算产生
+    黑块或断笔 —— 实测「填」按 9.0 收细后右偏旁糊成一团。所以从 delta 起
+    逐档递减重试，取第一个通过自检的结果：能收多少收多少，实在不行才保持原样。
+    降档记进 ERODE_DOWNGRADED，全部失败记入 ERODE_REJECTED。
     """
     if delta <= 0 or glyph.numberOfContours <= 0:
         return glyph
-    try:
-        before_contours = len(glyph.endPtsOfContours)
-
-        rec = RecordingPen()
-        glyph.draw(rec, None)
-        orig = pathops.Path()
-        rec.replay(Qu2CuPen(orig.getPen(), 0.5, all_cubic=True))
-        band = pathops.Path()
-        rec.replay(Qu2CuPen(band.getPen(), 0.5, all_cubic=True))
-        band.stroke(2 * delta, pathops.LineCap.ROUND_CAP,
-                    pathops.LineJoin.ROUND_JOIN, 4.0)
-        band = _quads_to_cubics(band)
-        # 同 dilate_glyph：必须 fix_winding=True，否则字腔会被填实
-        # （「日」「山」「回」变实心黑块）。
-        result = pathops.op(orig, band, pathops.PathOp.DIFFERENCE, fix_winding=True)
-        result = _quads_to_cubics(result)
-        # 自检：**收缩只会让墨变少，绝不会凭空添墨**。若收缩后某处有填充、
-        # 而收缩前那里是空白，就是布尔运算留下的错误区域 —— 实测「生」右下部
-        # 凭空多出一块（面积达主体 37%），渲染出来是一团黑斑。
-        # 注意不能用 bbox 包含关系判（「日」中间那一横的 bbox 本来就落在外框内，
-        # 那样会误杀 6500 字），必须实打实地采点测试。只在轮廓数变多时做，
-        # 省下绝大部分开销。
-        cs = list(result.contours)
-        if len(cs) > before_contours:
-            bad = False
-            for c in cs:
-                bx0, by0, bx1, by1 = c.bounds
-                for i in (1, 2, 3):
-                    for j in (1, 2, 3):
-                        px = bx0 + (bx1 - bx0) * i / 4.0
-                        py = by0 + (by1 - by0) * j / 4.0
-                        if result.contains((px, py)) and not orig.contains((px, py)):
-                            bad = True
-                            break
-                    if bad:
-                        break
-                if bad:
-                    break
-            if bad:
-                ERODE_REJECTED.append(tag)
-                return glyph
-        pen = TTGlyphPen(None)
-        result.draw(Cu2QuPen(pen, 1.0))
-        thin = pen.glyph()
-
-        if thin.numberOfContours <= 0:
-            ERODE_REJECTED.append(tag)
-            return glyph
-        if len(thin.endPtsOfContours) > before_contours * 2 + 4:
-            ERODE_REJECTED.append(tag)      # 轮廓数暴增 = 笔画被切断了
-            return glyph
-        return thin
-    except Exception:
-        ERODE_REJECTED.append(tag)
-        return glyph
+    for d in _erode_ladder(delta):
+        try:
+            out = _erode_once(glyph, d, tag)
+        except Exception:
+            out = None
+        if out is not None:
+            if d < delta - 1e-6:
+                ERODE_DOWNGRADED[tag] = d
+            return out
+    ERODE_REJECTED.append(tag)
+    return glyph
 
 
 def _quads_to_cubics(src):
@@ -319,62 +356,88 @@ DILATE_FAILED: list[int] = []
 EMPTY_SOURCE: list[int] = []
 
 
+#: 加粗时**自动降档**的记录：tag -> 实际用到的 delta。
+#: 降档不是错误，是"目标加粗量对这个字形太大、退一档更合适"。
+DILATE_DOWNGRADED: dict[int, float] = {}
+
+
+def _dilate_ladder(target: float) -> list[float]:
+    """加粗档位：从目标值起每 1.0 降一档，最低 1.0。
+
+    实测「善」在 delta≥4 时布尔运算崩（26 个「丢墨」采样点、轮廓 4→10），
+    而 delta≤3 完全正常 —— 对这类字形**降档**比"干脆不加粗"划算得多。
+    """
+    out: list[float] = []
+    d = target
+    while d >= 1.0 - 1e-9:
+        out.append(round(d, 1))
+        d -= 1.0
+    if not out:
+        out = [max(round(target, 2), 0.1)]
+    return out
+
+
+def _dilate_once(glyph, delta: float, tag: int):
+    """按 delta 尝试加粗**一次**。成功返回新字形，失败返回 None（不记状态）。"""
+    before_contours = len(glyph.endPtsOfContours)
+    rec = RecordingPen()
+    glyph.draw(rec, None)
+    orig = pathops.Path()
+    rec.replay(Qu2CuPen(orig.getPen(), 0.5, all_cubic=True))
+    band = pathops.Path()
+    rec.replay(Qu2CuPen(band.getPen(), 0.5, all_cubic=True))
+    band.stroke(2 * delta, pathops.LineCap.ROUND_CAP,
+                pathops.LineJoin.ROUND_JOIN, 4.0)
+    band = _quads_to_cubics(band)
+    # fix_winding=True：布尔运算后必须重算轮廓绕向，否则内轮廓（字腔）会被填实
+    # —— 表现是「日」「国」「回」这类带框的字变成实心黑块。
+    # （QUAD 已在上面转过 CUBIC，所以不会再撞 CONIC 报错。）
+    result = pathops.op(orig, band, pathops.PathOp.UNION, fix_winding=True)
+    result = _quads_to_cubics(result)
+    # 自检一：墨量单调性 —— 加粗只会让墨变多
+    if _path_area(result) < _path_area(orig) - 1e-6:
+        return None
+    # 自检二：实打实采点（轮廓数有变化时）—— 加粗后某处反而没墨了就是出错
+    cs = list(result.contours)
+    if len(cs) != before_contours:
+        for c in cs:
+            bx0, by0, bx1, by1 = c.bounds
+            for i in range(1, 5):
+                for j in range(1, 5):
+                    px = bx0 + (bx1 - bx0) * i / 5.0
+                    py = by0 + (by1 - by0) * j / 5.0
+                    if orig.contains((px, py)) and not result.contains((px, py)):
+                        return None
+    pen = TTGlyphPen(None)
+    result.draw(Cu2QuPen(pen, 1.0))
+    out = pen.glyph()
+    return out if out.numberOfContours > 0 else None
+
+
 def dilate_glyph(glyph, delta: float, tag: int = 0):
     """把字形轮廓向外膨胀 `delta` 单位（笔画宽度 +2δ）。
 
     pathops 不收 TrueType 的二次曲线（CONIC），所以先 all_cubic 转三次，
-    算完再用 Cu2QuPen 转回二次。布尔运算用 `fix_winding=False`：
-    stroke 的结果含 QUAD，走 fix_winding 会要求 even-odd 而报错；
-    TrueType 本来就是非零环绕，不修 winding 才是对的。
+    算完再用 Cu2QuPen 转回二次。
 
-    个别字形轮廓太碎或自交，布尔运算会抛 PathOpsError —— 这种情况**保持原样**，
-    宁可不加粗也不能把字弄坏。
+    ★ **自动降档重试**：加粗过头会让布尔运算产生碎片（「善」delta≥4 就崩），
+    所以从 delta 起逐档递减重试，取第一个通过自检的结果 ——
+    宁可比目标略细一点，也不能把字形弄坏。降档记进 DILATE_DOWNGRADED；
+    所有档位都失败才记入 DILATE_FAILED（保持原样）。
     """
     if delta <= 0 or glyph.numberOfContours <= 0:
         return glyph
-    try:
-        before_contours = len(glyph.endPtsOfContours)
-        rec = RecordingPen()
-        glyph.draw(rec, None)
-        orig = pathops.Path()
-        rec.replay(Qu2CuPen(orig.getPen(), 0.5, all_cubic=True))
-        band = pathops.Path()
-        rec.replay(Qu2CuPen(band.getPen(), 0.5, all_cubic=True))
-        band.stroke(2 * delta, pathops.LineCap.ROUND_CAP,
-                    pathops.LineJoin.ROUND_JOIN, 4.0)
-        band = _quads_to_cubics(band)
-        # fix_winding=True：布尔运算后必须重算轮廓绕向，否则内轮廓（字腔）会被填实
-        # —— 表现是「日」「国」「回」这类带框的字变成实心黑块。
-        # （QUAD 已在上面转过 CUBIC，所以不会再撞 CONIC 报错。）
-        result = pathops.op(orig, band, pathops.PathOp.UNION, fix_winding=True)
-        result = _quads_to_cubics(result)
-        # 同 erode_glyph 的反向自检：**加粗只会让墨变多**，若加粗后某处反而没墨了，
-        # 就是布尔运算出错。轮廓数变多时才查，省开销。
-        cs = list(result.contours)
-        if len(cs) > before_contours:
-            bad = False
-            for c in cs:
-                bx0, by0, bx1, by1 = c.bounds
-                for i in (1, 2, 3):
-                    for j in (1, 2, 3):
-                        px = bx0 + (bx1 - bx0) * i / 4.0
-                        py = by0 + (by1 - by0) * j / 4.0
-                        if orig.contains((px, py)) and not result.contains((px, py)):
-                            bad = True
-                            break
-                    if bad:
-                        break
-                if bad:
-                    break
-            if bad:
-                DILATE_FAILED.append(tag)
-                return glyph
-        pen = TTGlyphPen(None)
-        result.draw(Cu2QuPen(pen, 1.0))
-        return pen.glyph()
-    except Exception:
-        DILATE_FAILED.append(tag)
-        return glyph
+    for d in _dilate_ladder(delta):
+        try:
+            out = _dilate_once(glyph, d, tag)
+        except Exception:
+            out = None
+        if out is not None:
+            if d < delta - 1e-6:
+                DILATE_DOWNGRADED[tag] = d
+            return out
+    DILATE_FAILED.append(tag)
+    return glyph
 
 
 def index_svg_dir(directory: Path | None) -> dict[str, Path]:
@@ -719,8 +782,20 @@ def build(ebas: Path, data: Path, out: Path, coverage_out: Path | None,
     print(f"补区：全字库 {n_ebas_pua} + 汉典补 {n_zdic_pua} = {n_pua} 个码位")
     print(f"汉字码位（BMP，输入法上屏用）：{n_hanzi} 个（其中简体补齐 {n_simp}）")
     if ERODE_REJECTED:
+        if ERODE_DOWNGRADED:
+            by_delta: dict[float, int] = {}
+            for d in ERODE_DOWNGRADED.values():
+                by_delta[d] = by_delta.get(d, 0) + 1
+            desc = "、".join(f"δ={d}×{n}" for d, n in sorted(by_delta.items(), reverse=True))
+            print(f"{ZEBRA}全字库字形收细：{len(ERODE_DOWNGRADED)} 个自动降档（{desc}）")
         print(f"{ZEBRA}全字库字形收细：{len(ERODE_REJECTED)} 个保持原样（细笔画会断）")
     if DILATE_FAILED:
+        if DILATE_DOWNGRADED:
+            by_delta: dict[float, int] = {}
+            for d in DILATE_DOWNGRADED.values():
+                by_delta[d] = by_delta.get(d, 0) + 1
+            desc = "、".join(f"δ={d}×{n}" for d, n in sorted(by_delta.items(), reverse=True))
+            print(f"{ZEBRA}汉典字形加粗：{len(DILATE_DOWNGRADED)} 个自动降档（{desc}）")
         print(f"{ZEBRA}汉典字形加粗：{len(DILATE_FAILED)} 个失败（保持原样，未加粗）")
     if zdic_pua_failed:
         print(f"{ZEBRA}（汉典 SVG 解析失败 {len(zdic_pua_failed)} 个，已跳过）")
