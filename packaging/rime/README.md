@@ -3,6 +3,21 @@
 在 Windows 和安卓上用**同一份数据**打出小篆。macOS 版是原生输入法（体验更完整），
 这里走 [Rime](https://rime.im/) 引擎 —— 不用写代码，只装配置。
 
+## 先拿到文件
+
+**去 Release 页下载**（别用仓库里的源码，那里面没打包字体）：
+
+```
+https://github.com/Ivan666jjj/xiaozhuan-ime/releases/latest
+    → xiaozhuan-ime-Rime-v1.0.0.zip
+```
+
+> 🌏 **打不开 github.com？** 在网址前面加上 `ghfast.top/` 即可：
+> `https://ghfast.top/https://github.com/Ivan666jjj/xiaozhuan-ime/releases/latest`
+
+解压后就是下面「文件清单」里的那几个文件（含字体）。也可以从源码构建：
+`./build.sh publish` 会把两个平台的包一起打出来。
+
 ## 原理：跟 macOS 版一模一样的思路
 
 **上屏的是普通汉字，靠字体把候选窗渲染成篆形。**
@@ -20,7 +35,7 @@
 | `shuowen.dict.yaml` | 词典：408 个拼音音节 / 8,631 个篆字 |
 | `default.custom.yaml` | 桌面端：把方案挂进列表 |
 | `trime.custom.yaml` | 安卓端：指定候选窗字体 |
-| `ShuowenSeal.ttf` | 篆书字体（25.5 MB） |
+| `ShuowenSeal.ttf` | 篆书字体（25.8 MB） |
 
 > 全部由 `python3 tools/export_rime.py` 生成，改词典要重跑那个脚本。
 
@@ -122,8 +137,17 @@
 
 ## 字形来源与授权
 
-字形来自 **开元小篆**（SIL OFL 1.1）、**全字库说文解字**（政府资料开放授权）
-和**汉典**（仅个人使用，已压到最少）。自用无妨；**要分发就自己重建一份纯
-OFL/OGDL 版**，做法见仓库根目录的 `README.md`。
+**分发包里的字体不含汉典字形**（汉典授权仅到「个人使用」，对外分发必须排除）。
 
-字体授权全文见 `font/kaiyuan/OFL.txt`。
+字形来自两处：
+
+| 来源 | 授权 | 占比 |
+|---|---|---|
+| **开元小篆** | SIL OFL 1.1 | ~87% |
+| **台湾全字库说文解字** | 政府资料开放授权条款第 1 版 | ~13% |
+
+授权全文见包内 `KaiyuanSeal-OFL.txt` 与 `字形来源与授权.md`。
+
+> ⚠️ **自己从源码构建**时，默认会用到汉典的补缺字形（多出 1249 个字）。
+> 那种版本**只能自用**；对外分发请用 `./build.sh publish`，
+> 它会自动改用不含汉典的合规字体重建。
