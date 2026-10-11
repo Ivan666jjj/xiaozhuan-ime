@@ -56,7 +56,19 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 SEAL_FONT = "Shuowen Seal"
-KAI_FONT = "KaiTi"
+
+#: 楷体用哪个名字 —— 两个平台**没有共同的叫法**，只能选一边：
+#:
+#:   `KaiTi`     Windows 的族名。macOS 上**不存在**（实测
+#:               `CTFontCreateWithName("KaiTi")` 直接回退成 Helvetica），
+#:               于是 WPS for Mac 报「缺失字体」并把楷书显示成宋体。
+#:   `Kaiti SC`  macOS 的族名（实测可解析，WPS 显示为「楷体-简」）。
+#:               Windows 上不存在，那边会回退。
+#:
+#: 默认取 `Kaiti SC`：本项目的对照文档主要在 macOS 上生成和查看，
+#: 生成者看到什么效果最重要。要发给 Windows 用户的话，
+#: 加 `--kai-font KaiTi` 重新生成即可。
+KAI_FONT = "Kaiti SC"
 
 #: 标题与作者拉开层次：标题大而重、作者小而淡
 #: （原来两者同字号同字体，读者第一眼分不出主次 —— 朋友实测反馈）
@@ -197,6 +209,7 @@ def build_interlinear(title: str, lines: list[str], out: Path) -> None:
 
 
 def main() -> int:
+    global KAI_FONT                       # 允许 --kai-font 覆盖模块级默认值
     ap = argparse.ArgumentParser(description="生成篆书/楷书对照 docx 并嵌入字体")
     ap.add_argument("--title", required=True, help="标题，如「登鹳雀楼 · 王之涣」")
     ap.add_argument("--lines", required=True,
@@ -210,7 +223,12 @@ def main() -> int:
     ap.add_argument("--installed-font",
                     default=str(Path.home() / "Library/Fonts/ShuowenSeal.ttf"),
                     help="用于覆盖校验的已安装字体")
+    ap.add_argument("--kai-font", default=KAI_FONT,
+                    help=f"楷体族名（默认 {KAI_FONT}，适合 macOS；"
+                         f"发给 Windows 用户可改 KaiTi）")
     args = ap.parse_args()
+
+    KAI_FONT = args.kai_font
 
     lines = [l.strip() for l in args.lines.split("|") if l.strip()]
     if not lines:

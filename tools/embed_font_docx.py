@@ -87,6 +87,78 @@ def _add_embed_regular(font_table: str, font_name: str, font_key: str) -> str:
         f'<w:font w:name="{font_name}">{embed}</w:font></w:fonts>')
 
 
+#: 字体在别的平台上的等价名 —— 用 `<w:altName>` 写进 fontTable。
+#:
+#: 起因：docx 里写的是 Windows 的字体名 `KaiTi`，而 **macOS 上根本没有这个字体**
+#: （实测 `CTFontCreateWithName("KaiTi")` 直接回退成 Helvetica），
+#: 于是 WPS for Mac 报「缺失字体」并把楷书回退成宋体。
+#: 告诉它本机对应的名字就能消除这个警告。
+#: （Word for Mac 自带 KaiTi → 楷体 的映射，所以只有 WPS 会报。）
+#:
+#: ⚠️ CT_Font 的 `altName` 只能有一个（maxOccurs=1），所以每个字体挑最通用的。
+#: macOS 楷体的可用名实测：`Kaiti SC` ✅、`楷体-简` ✅、`STKaiti` ✅（繁体）、
+#: `KaitiSC-Regular` ❌（回退 Helvetica）。
+FONT_ALT_NAMES = {
+    "KaiTi": "Kaiti SC",
+}
+
+
+def _add_alt_names(font_table: str) -> str:
+    """给已知的跨平台字体补 `<w:altName>`。
+
+    必须插在 `<w:font>` 的**最前面** —— CT_Font 的子元素有顺序要求
+    （altName 排第一），放错了 Word 会拒收整个包。
+    """
+    for name, alt in FONT_ALT_NAMES.items():
+        tag = f'<w:altName w:val="{alt}"/>'
+        # ⚠️ 只给**已存在**的条目加别名，**绝不新建** ——
+        # 否则会把 `_prune_unused_fonts` 刚删掉的字体又加回来。实测踩过这个坑：
+        # `KaiTi` 明明没被任何正文引用、已被清理，却被这里重新建了一条，
+        # WPS 的「缺失字体」警告因此一直消不掉。
+        pat = re.compile(r'(<w:font\s+w:name="' + re.escape(name) + r'"(?:\s[^>]*)?>)'
+                         r'(?!\s*<w:altName>)')
+        font_table = pat.sub(lambda m: m.group(1) + tag, font_table)
+    return font_table
+
+
+def _used_font_names(items: dict) -> set:
+    """从文档正文/样式里收集**实际被引用**的字体名（`w:rFonts` 的四个属性）。
+
+    用途：判断 fontTable 里哪些字体声明是多余的，可以删。
+    """
+    used: set = set()
+    for name in ("word/document.xml", "word/styles.xml",
+                 "word/numbering.xml", "word/footnotes.xml", "word/endnotes.xml"):
+        blob = items.get(name)
+        if not blob:
+            continue
+        try:
+            s = blob.decode("utf-8")
+        except UnicodeDecodeError:
+            continue
+        for m in re.finditer(r'w:(?:ascii|hAnsi|eastAsia|cs)="([^"]+)"', s):
+            used.add(m.group(1))
+    return used
+
+
+def _prune_unused_fonts(font_table: str, used: set, keep: set) -> str:
+    """删掉 fontTable 里**没被引用**的字体声明。
+
+    python-docx 的默认模板塞了一批字体（Cambria / ＭＳ 明朝 / Calibri /
+    ＭＳ ゴシック …），**macOS 上一个都没有** —— WPS 打开就报「缺失字体」。
+    这些条目根本没被文档引用，删掉即可（字体实际由正文里的 `w:rFonts` 决定）。
+
+    ⚠️ `keep` 里的是嵌入字体，**必须保留**（否则嵌入的字体加载不了）。
+    """
+    def repl(m):
+        name = m.group(1)
+        if name in used or name in keep:
+            return m.group(0)
+        return ""
+    return re.sub(r'<w:font\s+w:name="([^"]+)"[^>]*>.*?</w:font>',
+                  repl, font_table, flags=re.S)
+
+
 def _add_odttf_content_type(content_types: str) -> str:
     if "odttf" in content_types:
         return content_types
@@ -142,8 +214,11 @@ def embed(docx_in: Path, font_path: Path, font_name: str, out_path: Path) -> dic
             'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
             "</w:fonts>").encode("utf-8")
 
-    items["word/fontTable.xml"] = _add_embed_regular(
-        items["word/fontTable.xml"].decode("utf-8"), font_name, font_key).encode("utf-8")
+    ft = items["word/fontTable.xml"].decode("utf-8")
+    ft = _prune_unused_fonts(ft, _used_font_names(items), {font_name})
+    ft = _add_alt_names(ft)                        # 跨平台字体别名（KaiTi → Kaiti SC）
+    ft = _add_embed_regular(ft, font_name, font_key)
+    items["word/fontTable.xml"] = ft.encode("utf-8")
     items["word/_rels/fontTable.xml.rels"] = FONT_TABLE_RELS.encode("utf-8")
     items[ODTTF_PART] = odttf
     items["[Content_Types].xml"] = _add_odttf_content_type(
