@@ -26,7 +26,7 @@ bash rime-install Ivan666jjj/rime-xiaozhuan
 
 ```
 https://github.com/Ivan666jjj/xiaozhuan-ime/releases/latest
-    → xiaozhuan-ime-Rime-v1.0.0.zip
+    → xiaozhuan-ime-Rime-v1.0.1.zip
 ```
 
 > 🌏 **打不开 github.com？** 在网址前面加上 `ghfast.top/` 即可：
@@ -145,7 +145,7 @@ https://github.com/Ivan666jjj/xiaozhuan-ime/releases/latest
 |---|---|
 | **人名常用字** | **97%**（71/73） |
 | **百家姓（前 60）** | **94%**（56/60） |
-| GB2312 常用字 | 70.6%（4,775 / 6,763） |
+| GB2312 常用字 | 72.2%（4,880 / 6,763） |
 
 **没篆形的大致四类**：
 
