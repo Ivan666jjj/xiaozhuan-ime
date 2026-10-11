@@ -3,6 +3,23 @@
 在 Windows 和安卓上用**同一份数据**打出小篆。macOS 版是原生输入法（体验更完整），
 这里走 [Rime](https://rime.im/) 引擎 —— 不用写代码，只装配置。
 
+## 更省事的装法：东风破一行命令
+
+如果你已经装了 Rime（小狼毫 / 同文），可以直接用东风破（plum）：
+
+```bash
+bash rime-install Ivan666jjj/rime-xiaozhuan
+```
+
+它会自动把方案文件放好（**但不会覆盖你已有的方案列表** ——
+要启用还得按下面的步骤做一次，或者往自己的 `default.custom.yaml` 里加
+`schema_list/+:`）。本仓库就是那个独立仓库的源，两边内容一致。
+
+> ⚠️ 注意：`schema_list/+` 里的 **`/+` 不能省**。Rime 的 patch 默认是
+> 「整体替换」，少了 `/+` 会把你原有的方案列表清空。
+
+---
+
 ## 先拿到文件
 
 **去 Release 页下载**（别用仓库里的源码，那里面没打包字体）：
@@ -33,7 +50,8 @@ https://github.com/Ivan666jjj/xiaozhuan-ime/releases/latest
 |---|---|
 | `shuowen.schema.yaml` | 输入方案（含候选窗字体设置） |
 | `shuowen.dict.yaml` | 词典：408 个拼音音节 / 8,631 个篆字 |
-| `default.custom.yaml` | 桌面端：把方案挂进列表 |
+| `default.custom.yaml.example` | **参考样例**，看它怎么把方案挂进列表 |
+| `recipe.yaml` | 东风破（plum）配方 |
 | `trime.custom.yaml` | 安卓端：指定候选窗字体 |
 | `ShuowenSeal.ttf` | 篆书字体（25.8 MB） |
 
@@ -55,7 +73,9 @@ https://github.com/Ivan666jjj/xiaozhuan-ime/releases/latest
 **③ 放配置**
 
 右键任务栏的小狼毫图标 → **用户文件夹**（会打开 `%APPDATA%\Rime`），把
-`shuowen.schema.yaml`、`shuowen.dict.yaml`、`default.custom.yaml` 三个文件复制进去。
+`shuowen.schema.yaml`、`shuowen.dict.yaml` 两个文件复制进去。
+（要让「小篆」出现在方案选单里，参考 `default.custom.yaml.example`，
+在**你自己的** `default.custom.yaml` 里加两行 `schema_list/+:`）
 
 **④ 重新部署**
 
