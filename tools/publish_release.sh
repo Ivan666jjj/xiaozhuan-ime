@@ -11,13 +11,13 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO="Ivan666jjj/xiaozhuan-ime"
-TAG="v1.0.0"
+TAG="v1.0.3"
 
 # 上传到 GitHub 的 asset 名用 ASCII（asset name 会进 URL，ASCII 最省事）
 ASSET_MAC="$ROOT/dist/小焕的小篆输入法-macOS.zip"
 ASSET_RIME="$ROOT/dist/小篆-Rime方案.zip"
-NAME_MAC="xiaozhuan-ime-macOS-v1.0.0.zip"
-NAME_RIME="xiaozhuan-ime-Rime-v1.0.0.zip"
+NAME_MAC="xiaozhuan-ime-macOS-v1.0.3.zip"
+NAME_RIME="xiaozhuan-ime-Rime-v1.0.3.zip"
 
 for f in "$ASSET_MAC" "$ASSET_RIME"; do
   [ -f "$f" ] || { echo "找不到分发包：$f"; echo "先跑：./build.sh publish"; exit 1; }
@@ -44,7 +44,9 @@ mkdir -p "$ROOT/build"
 python3 - "$ROOT" <<'PY'
 import json, sys, pathlib
 root = pathlib.Path(sys.argv[1])
-body = """## 小焕的小篆输入法 v1.0.0
+body = """## 这一版只做了一件事：把授权署名补全、把分发包修对
+
+**字形、词典、功能与 v1.0.2 一致，没有新增篆形。**
 
 macOS 上的小篆输入法，另附 Windows / 安卓用的 Rime 方案（同一份数据）。
 
@@ -57,6 +59,31 @@ macOS 上的小篆输入法，另附 Windows / 安卓用的 Rime 方案（同一
 
 所以打出来的字不会因为换台机器就变豆腐块。
 
+### 这一版改了什么
+
+**1. 授权署名补全**
+
+字形来自第三方，前几版的声明写得不够：
+
+- **全字库（OGDL-Taiwan-1.0）**补上官方要求的显名格式。OGDL 明定
+  「未尽显名标示义务者，**视为自始未取得开放资料之授权**」，不是可选项：
+
+  > 數位發展部，CNS11643中文標準交換碼全字庫網站，https://www.cns11643.gov.tw
+
+- **汉典**明确标注「仅限个人使用，不得随分发包分发」。
+- 包内新增 `第三方来源声明.md`（原先只有 Unicode 一段，字形来源一个都没写），
+  三方来源逐条列清。
+
+**2. Rime 方案包之前一个授权文件都没有**
+
+`xiaozhuan-ime-Rime-*.zip` 里带 23.6 MB 字体，但打包时只收 `packaging/rime/`
+目录，而 OFL 全文与字形声明放在上一层，结果全没打进去。现在会随包发出。
+
+**3. 中文文件名在 Windows 解压不再乱码**
+
+macOS 自带的 Info-ZIP 不给非 ASCII 文件名设 UTF-8 标记，中文名条目在 Windows
+上会变成乱码（包括授权声明文件本身）。已改用 Python `zipfile` 打包。
+
 ### 有什么
 
 - **拼音输入**：敲 `shui` → 候选窗以篆形显示「水 说 税 睡 谁」
@@ -67,7 +94,7 @@ macOS 上的小篆输入法，另附 Windows / 安卓用的 Rime 方案（同一
 ### 字形来源
 
 [开元小篆](https://github.com/frankslin/kaiyuan-small-seal-font)（SIL OFL 1.1）
-+ 台湾「全字库说文解字」（政府资料开放授权条款第 1 版）。
++ 台湾「全字库说文解字」（OGDL-Taiwan-1.0）。
 
 **本发布版不含汉典字形**（其授权仅到「个人使用」），所以《说文》未收的
 114 个现代常用字（以、其、前、备…）没有篆形，候选窗会显示普通汉字。
@@ -75,21 +102,21 @@ macOS 上的小篆输入法，另附 Windows / 安卓用的 Rime 方案（同一
 
 ### 安装
 
-**macOS** —— 下载 `xiaozhuan-ime-macOS-v1.0.0.zip`：
+**macOS** —— 下载 `xiaozhuan-ime-macOS-v1.0.3.zip`：
 
 1. 解压，运行 `./install.sh`
 2. **注销重登一次**（macOS 对输入法的硬性要求，首次安装必须）
 3. 系统设置 → 键盘 → 文字输入 → 输入法 → 编辑，添加「小焕的小篆输入法」
 
-**Windows / 安卓** —— 下载 `xiaozhuan-ime-Rime-v1.0.0.zip`，按包内 `README.md`
+**Windows / 安卓** —— 下载 `xiaozhuan-ime-Rime-v1.0.3.zip`，按包内 `README.md`
 分别用「小狼毫 Weasel」/「同文 Trime」，各自五步。
 
 ### 授权
 
 代码 MIT；字体按三个字源各自授权（包内附 OFL 全文与来源声明）。
 """
-json.dump({"tag_name": "v1.0.0", "target_commitish": "main",
-           "name": "v1.0.0 — macOS 输入法 + Windows/安卓 Rime 方案",
+json.dump({"tag_name": "v1.0.3", "target_commitish": "main",
+           "name": "v1.0.3 — 授权署名补全 + Rime 包补声明",
            "body": body},
           open(root / "build" / "rel.json", "w", encoding="utf-8"),
           ensure_ascii=False)

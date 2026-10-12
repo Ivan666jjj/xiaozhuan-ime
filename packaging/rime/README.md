@@ -26,7 +26,7 @@ bash rime-install Ivan666jjj/rime-xiaozhuan
 
 ```
 https://github.com/Ivan666jjj/xiaozhuan-ime/releases/latest
-    → xiaozhuan-ime-Rime-v1.0.2.zip
+    → xiaozhuan-ime-Rime-v1.0.3.zip
 ```
 
 > 🌏 **打不开 github.com？** 在网址前面加上 `ghfast.top/` 即可：
