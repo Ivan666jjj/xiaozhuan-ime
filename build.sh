@@ -63,6 +63,45 @@ do_build() {
   echo "==> 完成：$BUILD/$BUNDLE"
 }
 
+# Info-ZIP（macOS 自带 3.0）不把非 ASCII 文件名标成 UTF-8，中文名条目在
+# Windows / 部分安卓解压工具里会变成乱码。改用 Python 打包，并保留符号链接。
+# 用法：zip_utf8 <父目录> <要打包的子目录名> <输出 zip>
+zip_utf8() {
+  local parent="$1" name="$2" out="$3"
+  rm -f "$out"
+  python3 - "$parent" "$name" "$out" <<'PY'
+import os, stat, sys, zipfile
+
+parent, name, out = sys.argv[1], sys.argv[2], sys.argv[3]
+top = os.path.join(parent, name)
+
+
+def as_link(arc, target):
+    zi = zipfile.ZipInfo(arc)
+    zi.create_system = 3                      # unix
+    zi.external_attr = (stat.S_IFLNK | 0o777) << 16
+    return zi
+
+
+with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as z:
+    for root, dirs, files in os.walk(top):
+        dirs.sort()
+        for d in list(dirs):
+            p = os.path.join(root, d)
+            if os.path.islink(p):             # 目录符号链接照原样存
+                z.writestr(as_link(os.path.relpath(p, parent) + "/", os.readlink(p)),
+                           os.readlink(p))
+                dirs.remove(d)
+        for f in sorted(files):
+            full = os.path.join(root, f)
+            arc = os.path.relpath(full, parent)
+            if os.path.islink(full):
+                z.writestr(as_link(arc, os.readlink(full)), os.readlink(full))
+            else:
+                z.write(full, arc)
+PY
+}
+
 do_package() {
   do_build
   local DIST="$ROOT/dist"
@@ -80,7 +119,7 @@ do_package() {
   cp "$ROOT/LICENSE" "$STAGE/LICENSE.txt"
   echo "==> 已附授权声明：MIT（代码）/ OFL（开元小篆）/ OGDL（全字库）"
   chmod +x "$STAGE/install.sh"
-  ( cd "$DIST" && zip -qry "小焕的小篆输入法-macOS.zip" "小焕的小篆输入法" )
+  zip_utf8 "$DIST" "小焕的小篆输入法" "$DIST/小焕的小篆输入法-macOS.zip"
   echo "==> 分发包：$DIST/小焕的小篆输入法-macOS.zip"
   du -sh "$DIST/小焕的小篆输入法-macOS.zip"
 }
@@ -95,9 +134,16 @@ do_font() {
 do_rime() {
   echo "==> 导出 Rime 方案（Windows 小狼毫 / 安卓同文）"
   python3 "$ROOT/tools/export_rime.py" || return 1
+  # 这个包里带字体（23.6 MB），OFL 与 OGDL 都要求随字体附上声明，
+  # 所以打包前把两份声明拷进 staging（不污染 packaging/rime/ 工作区）。
+  local STAGE="$ROOT/build/rime-dist"
+  rm -rf "$STAGE"; mkdir -p "$STAGE/rime"
+  cp -R "$ROOT/packaging/rime/." "$STAGE/rime/"
+  cp "$ROOT/packaging/KaiyuanSeal-OFL.txt" "$STAGE/rime/"
+  cp "$ROOT/packaging/字形来源与授权.md" "$STAGE/rime/"
   mkdir -p "$ROOT/dist"
-  ( cd "$ROOT/packaging" && zip -qry "$ROOT/dist/小篆-Rime方案.zip" rime )
-  echo "==> $ROOT/dist/小篆-Rime方案.zip"
+  zip_utf8 "$STAGE" "rime" "$ROOT/dist/小篆-Rime方案.zip"
+  echo "==> $ROOT/dist/小篆-Rime方案.zip（含 OFL 全文与字形来源声明）"
   du -sh "$ROOT/dist/小篆-Rime方案.zip"
   echo
   echo "用法见 zip 里的 README.md（两个平台各五步）"
